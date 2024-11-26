@@ -1,0 +1,41 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'org.example'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation "org.openjfx:javafx-controls:22"
+    implementation "org.openjfx:javafx-fxml:22"
+    implementation "org.apache.xmlgraphics:batik-all:1.16"
+    implementation "com.google.code.gson:gson:2.10.1"
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
+}
+
+application {
+    mainClass = 'org.example.Main'
+}
+
+run {
+    jvmArgs = [
+            '--module-path', 'C:\\Users\\Darowiin\\.jdks\\javafx-sdk-22.0.2\\lib',
+            '--add-modules', 'javafx.controls,javafx.fxml'
+    ]
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += [
+            '--module-path', 'C:\\Users\\Darowiin\\.jdks\\javafx-sdk-22.0.2\\lib',
+            '--add-modules', 'javafx.controls,javafx.fxml'
+    ]
+}
+
+test {
+    useJUnitPlatform()
+}
