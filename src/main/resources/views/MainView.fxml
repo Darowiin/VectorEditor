@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.MainController">
+    <!-- Верхнее меню -->
+    <top>
+        <MenuBar>
+            <Menu text="File">
+                <MenuItem fx:id="newFileMenuItem" text="New"/>
+                <MenuItem fx:id="openFileMenuItem" text="Open..."/>
+                <MenuItem fx:id="saveFileMenuItem" text="Save"/>
+                <MenuItem fx:id="exitMenuItem" text="Exit"/>
+            </Menu>
+            <Menu text="Edit">
+                <MenuItem fx:id="undoMenuItem" text="Undo"/>
+                <MenuItem fx:id="redoMenuItem" text="Redo"/>
+                <MenuItem fx:id="deleteMenuItem" text="Delete"/>
+            </Menu>
+            <Menu text="View">
+                <MenuItem fx:id="zoomInMenuItem" text="Zoom In"/>
+                <MenuItem fx:id="zoomOutMenuItem" text="Zoom Out"/>
+            </Menu>
+            <Menu text="Help">
+                <MenuItem fx:id="aboutMenuItem" text="About"/>
+            </Menu>
+        </MenuBar>
+    </top>
+
+    <!-- Левая панель инструментов -->
+    <left>
+        <VBox spacing="10" style="-fx-padding: 10;">
+            <Button fx:id="selectToolButton" text="Select"/>
+            <Button fx:id="rectangleToolButton" text="Rectangle"/>
+            <Button fx:id="circleToolButton" text="Circle"/>
+            <Button fx:id="lineToolButton" text="Line"/>
+        </VBox>
+    </left>
+
+    <!-- Центральная рабочая область -->
+    <center>
+        <StackPane>
+            <AnchorPane fx:id="drawingArea" style="-fx-background-color: #f5f5f5;">
+            </AnchorPane>
+        </StackPane>
+
+    </center>
+
+    <!-- Правая панель свойств -->
+    <right>
+        <VBox spacing="10" style="-fx-padding: 10;">
+            <TextField fx:id="shapeColorField" promptText="Color"/>
+        </VBox>
+    </right>
+
+    <!-- Нижняя панель статуса -->
+    <bottom>
+        <Label fx:id="statusBar" text="Ready" style="-fx-padding: 5; -fx-background-color: #eaeaea;"/>
+    </bottom>
+</BorderPane>
