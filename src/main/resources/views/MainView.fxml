@@ -40,11 +40,8 @@
 
     <!-- Центральная рабочая область -->
     <center>
-        <StackPane>
             <AnchorPane fx:id="drawingArea" style="-fx-background-color: #f5f5f5;">
             </AnchorPane>
-        </StackPane>
-
     </center>
 
     <!-- Правая панель свойств -->

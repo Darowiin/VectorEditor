@@ -3,6 +3,7 @@ package org.example;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.TextField;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
@@ -13,12 +14,25 @@ import javafx.scene.shape.Rectangle;
 
 public class MainController {
 
+    @FXML private MenuItem newFileMenuItem;
+    @FXML private MenuItem openFileMenuItem;
+    @FXML private MenuItem saveFileMenuItem;
+    @FXML private MenuItem exitMenuItem;
+    @FXML private MenuItem undoMenuItem;
+    @FXML private MenuItem redoMenuItem;
+    @FXML private MenuItem deleteMenuItem;
+    @FXML private MenuItem zoomInMenuItem;
+    @FXML private MenuItem zoomOutMenuItem;
+    @FXML private MenuItem aboutMenuItem;
+
     @FXML private Button selectToolButton;
     @FXML private Button rectangleToolButton;
     @FXML private Button circleToolButton;
     @FXML private Button lineToolButton;
+
     @FXML private TextField shapeColorField;
     @FXML private AnchorPane drawingArea;
+
     @FXML private Label statusBar;
 
     private ToolMode currentTool = ToolMode.SELECT;
@@ -31,6 +45,9 @@ public class MainController {
 
     @FXML
     public void initialize() {
+        newFileMenuItem.setOnAction(event -> handleNewFile());
+        exitMenuItem.setOnAction(event -> System.exit(0));
+
         // Настройка инструментов
         selectToolButton.setOnAction(event -> setToolMode(ToolMode.SELECT));
         rectangleToolButton.setOnAction(event -> setToolMode(ToolMode.RECTANGLE));
@@ -44,6 +61,11 @@ public class MainController {
 
         // Установка цвета по умолчанию
         shapeColorField.setText("#000000"); // Черный цвет по умолчанию
+    }
+
+    private void handleNewFile() {
+        statusBar.setText("Creating new file...");
+        drawingArea.getChildren().clear(); // Очистка холста
     }
 
     private void setToolMode(ToolMode tool) {
@@ -61,7 +83,7 @@ public class MainController {
     }
 
     private void handleMousePressed(MouseEvent event) {
-        if (!isInDrawingArea(event)) return;
+        if (!isInsideDrawingArea(event.getX(), event.getY())) return;
 
         startX = event.getX();
         startY = event.getY();
@@ -87,10 +109,8 @@ public class MainController {
     }
 
     private void handleMouseDragged(MouseEvent event) {
-        if (!isInDrawingArea(event)) return;
-
-        double endX = event.getX();
-        double endY = event.getY();
+        double endX = clampToDrawingArea(event.getX(), true);
+        double endY = clampToDrawingArea(event.getY(), false);
 
         if (currentTool == ToolMode.RECTANGLE && currentRectangle != null) {
             double width = Math.abs(endX - startX);
@@ -111,8 +131,6 @@ public class MainController {
     }
 
     private void handleMouseReleased(MouseEvent event) {
-        if (!isInDrawingArea(event)) return;
-
         if (currentTool == ToolMode.RECTANGLE) {
             statusBar.setText("Rectangle drawn.");
             currentRectangle = null;
@@ -125,7 +143,15 @@ public class MainController {
         }
     }
 
-    private boolean isInDrawingArea(MouseEvent event) {
-        return event.getX() >= 0 && event.getY() >= 0 && event.getX() <= drawingArea.getWidth() && event.getY() <= drawingArea.getHeight();
+    private boolean isInsideDrawingArea(double x, double y) {
+        return x >= 0 && y >= 0 && x <= drawingArea.getWidth() && y <= drawingArea.getHeight();
+    }
+
+    private double clampToDrawingArea(double value, boolean isX) {
+        if (isX) {
+            return Math.max(0, Math.min(value, drawingArea.getWidth()));
+        } else {
+            return Math.max(0, Math.min(value, drawingArea.getHeight()));
+        }
     }
 }
