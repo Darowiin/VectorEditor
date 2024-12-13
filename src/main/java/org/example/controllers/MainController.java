@@ -1,18 +1,21 @@
 package org.example.controllers;
 
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.ColorPicker;
-import javafx.scene.control.Label;
-import javafx.scene.control.MenuItem;
-import javafx.scene.input.MouseEvent;
+import javafx.scene.control.*;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
-import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
+import javafx.stage.FileChooser;
 
+import javafx.stage.WindowEvent;
 import org.example.enums.ToolMode;
+
+import java.io.File;
+import java.io.IOException;
+import java.text.ParseException;
+import java.util.List;
+import java.util.Optional;
 
 public class MainController {
 
@@ -44,6 +47,45 @@ public class MainController {
     private ToolController toolController;
     private ColorController colorController;
     private DrawController drawController;
+
+    private double scaleFactor = 1.0; // Текущий масштаб
+    private static final double ZOOM_STEP = 0.1; // Шаг изменения масштаба
+    private static final double MAX_SCALE = 3.0; // Максимальный масштаб
+    private static final double MIN_SCALE = 0.5; // Минимальный масштаб
+
+    private final javafx.event.EventHandler<WindowEvent> closeEventHandler = new javafx.event.EventHandler<WindowEvent>() {
+        @Override
+        public void handle(WindowEvent event) {
+            if (DrawController.isModified()) {
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                alert.setTitle("Exit");
+                alert.setHeaderText("You have unsaved changes.");
+                alert.setContentText("Do you want to save your changes before exiting?");
+
+                ButtonType saveButton = new ButtonType("Save");
+                ButtonType discardButton = new ButtonType("Don't Save");
+                ButtonType cancelButton = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+                alert.getButtonTypes().setAll(saveButton, discardButton, cancelButton);
+
+                Optional<ButtonType> result = alert.showAndWait();
+
+                if (result.isPresent()) {
+                    if (result.get() == saveButton) {
+                        handleSaveFile();
+                    } else if (result.get() == discardButton) {
+                        System.exit(0);
+                    }
+                }
+            } else {
+                System.exit(0);
+            }
+        }
+    };
+
+    public javafx.event.EventHandler<WindowEvent> getCloseEventHandler(){
+        return closeEventHandler;
+    }
 
     @FXML
     public void initialize() {
@@ -106,24 +148,189 @@ public class MainController {
         clip.heightProperty().bind(drawingArea.heightProperty());
         drawingArea.setClip(clip);
 
+        drawController.resetModificationStatus();
+
         // Установка обработчиков для меню
         newFileMenuItem.setOnAction(event -> handleNewFile());
-        openFileMenuItem.setOnAction(event -> statusBar.setText("Open File: Not implemented yet."));
-        saveFileMenuItem.setOnAction(event -> statusBar.setText("Save File: Not implemented yet."));
-        exitMenuItem.setOnAction(event -> System.exit(0));
+        openFileMenuItem.setOnAction(event -> handleOpenFile());
+        saveFileMenuItem.setOnAction(event -> handleSaveFile());
+        exitMenuItem.setOnAction(event -> handleExit());
 
         undoMenuItem.setOnAction(event -> statusBar.setText("Undo: Not implemented yet."));
         redoMenuItem.setOnAction(event -> statusBar.setText("Redo: Not implemented yet."));
         deleteMenuItem.setOnAction(event -> statusBar.setText("Delete: Not implemented yet."));
 
-        zoomInMenuItem.setOnAction(event -> statusBar.setText("Zoom In: Not implemented yet."));
-        zoomOutMenuItem.setOnAction(event -> statusBar.setText("Zoom Out: Not implemented yet."));
+        zoomInMenuItem.setOnAction(event -> {
+            if (scaleFactor < MAX_SCALE) {
+                scaleFactor += ZOOM_STEP;
+                applyZoom();
+                statusBar.setText("Zoom In: " + (int) (scaleFactor * 100) + "%");
+            } else {
+                statusBar.setText("Maximum zoom level reached.");
+            }
+        });
+
+        // Zoom Out
+        zoomOutMenuItem.setOnAction(event -> {
+            if (scaleFactor > MIN_SCALE) {
+                scaleFactor -= ZOOM_STEP;
+                applyZoom();
+                statusBar.setText("Zoom Out: " + (int) (scaleFactor * 100) + "%");
+            } else {
+                statusBar.setText("Minimum zoom level reached.");
+            }
+        });
 
         aboutMenuItem.setOnAction(event -> statusBar.setText("About: Vector Editor v1.0"));
     }
 
     private void handleNewFile() {
-        drawController.clearCanvas();
-        statusBar.setText("New file created.");
+        if (DrawController.isModified()) {
+            // Показать диалог с вопросом о сохранении
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Save Changes");
+            alert.setHeaderText("You have unsaved changes.");
+            alert.setContentText("Do you want to save your changes before opening a new file?");
+
+            ButtonType saveButton = new ButtonType("Save");
+            ButtonType discardButton = new ButtonType("Don't Save");
+            ButtonType cancelButton = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+            alert.getButtonTypes().setAll(saveButton, discardButton, cancelButton);
+
+            Optional<ButtonType> result = alert.showAndWait();
+
+            if (result.isPresent()) {
+                if (result.get() == saveButton) {
+                    handleSaveFile();
+                } else if (result.get() == discardButton) {
+                    drawController.clearCanvas();
+                    statusBar.setText("New file created.");
+                }
+            }
+        } else {
+            drawController.clearCanvas();
+            statusBar.setText("New file created.");
+        }
+
     }
+
+    private void handleOpenFile() {
+        // Создаём список форматов
+        List<String> choices = List.of("JSON", "SVG");
+
+        // Создаём диалог выбора формата
+        ChoiceDialog<String> dialog = new ChoiceDialog<>("JSON", choices);
+        dialog.setTitle("Open File");
+        dialog.setHeaderText("Choose a file format");
+        dialog.setContentText("Format:");
+
+        // Показываем диалог
+        dialog.showAndWait().ifPresent(format -> {
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Open File");
+
+            // Настройка фильтра расширений в зависимости от формата
+            switch (format) {
+                case "JSON":
+                    fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
+                    break;
+                case "SVG":
+                    fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("SVG Files", "*.svg"));
+                    break;
+            }
+
+            // Показываем диалог выбора файла
+            File file = fileChooser.showOpenDialog(drawingArea.getScene().getWindow());
+            if (file != null) {
+                try {
+                    if ("JSON".equals(format)) {
+                        drawController.loadFromJSON(file); // Загрузка JSON
+                    } else if ("SVG".equals(format)) {
+                        drawController.loadFromSvg(file); // Загрузка SVG
+                    }
+                    drawController.resetModificationStatus();
+                    statusBar.setText("File loaded: " + file.getName() + " as " + format);
+                } catch (IOException | ParseException e) {
+                    statusBar.setText("Failed to load file: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    private void handleSaveFile() {
+        // Создаём список форматов
+        List<String> choices = List.of("JSON", "SVG");
+
+        // Создаём диалог выбора формата
+        ChoiceDialog<String> dialog = new ChoiceDialog<>("JSON", choices);
+        dialog.setTitle("Save File");
+        dialog.setHeaderText("Choose a file format");
+        dialog.setContentText("Format:");
+
+        // Показываем диалог
+        dialog.showAndWait().ifPresent(format -> {
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Save File");
+            switch (format) {
+                case "JSON":
+                    fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
+                    break;
+                case "SVG":
+                    fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("SVG Files", "*.svg"));
+                    break;
+            }
+
+            File file = fileChooser.showSaveDialog(drawingArea.getScene().getWindow());
+            if (file != null) {
+                try {
+                    if ("JSON".equals(format)) {
+                        drawController.saveToJSON(file);
+                    } else if ("SVG".equals(format)) {
+                        drawController.saveToSvg(file);
+                    }
+                    drawController.resetModificationStatus();
+                    statusBar.setText("File saved: " + file.getName() + " as " + format);
+                } catch (IOException e) {
+                    statusBar.setText("Failed to save file: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    @FXML
+    private void handleExit() {
+        if (DrawController.isModified()) {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Exit");
+            alert.setHeaderText("You have unsaved changes.");
+            alert.setContentText("Do you want to save your changes before exiting?");
+
+            ButtonType saveButton = new ButtonType("Save");
+            ButtonType discardButton = new ButtonType("Don't Save");
+            ButtonType cancelButton = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+            alert.getButtonTypes().setAll(saveButton, discardButton, cancelButton);
+
+            Optional<ButtonType> result = alert.showAndWait();
+
+            if (result.isPresent()) {
+                if (result.get() == saveButton) {
+                    handleSaveFile();
+                } else if (result.get() == discardButton) {
+                    // Закрыть приложение
+                    System.exit(0);
+                }
+            }
+        } else {
+            // Если изменений нет, просто закрыть приложение
+            System.exit(0);
+        }
+    }
+
+    private void applyZoom() {
+        drawController.getContentGroup().setScaleX(scaleFactor);
+        drawController.getContentGroup().setScaleY(scaleFactor);
+    }
+
 }

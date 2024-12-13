@@ -51,7 +51,7 @@
     <!-- Правая панель свойств -->
     <right>
         <VBox spacing="10" style="-fx-padding: 10; -fx-background-color: #eaeaea;">
-            <Label text="Properties" style="-fx-font-weight: bold;" />
+            <Label style="-fx-font-weight: bold;" text="Properties" />
 
             <!-- Предустановленные цвета -->
             <HBox spacing="5">
@@ -63,7 +63,7 @@
             </HBox>
 
             <!-- Выбор через графический интерфейс -->
-            <Label text="Изменение цвета" />
+            <Label text="Цветовая палитра" />
             <ColorPicker fx:id="colorPicker" />
         </VBox>
     </right>

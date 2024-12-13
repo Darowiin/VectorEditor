@@ -6,6 +6,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
+import org.example.controllers.MainController;
 
 public class Main extends Application {
     @Override
@@ -13,7 +14,7 @@ public class Main extends Application {
         // Загружаем FXML
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/mainView.fxml"));
         Parent root = loader.load();
-
+        MainController mainController = loader.getController();
         // Настраиваем сцену
         Scene scene = new Scene(root);
         primaryStage.setTitle("Vector Editor");
@@ -21,6 +22,8 @@ public class Main extends Application {
         primaryStage.setScene(scene);
         primaryStage.setMaximized(true);
         primaryStage.show();
+
+        primaryStage.setOnCloseRequest(mainController.getCloseEventHandler());
     }
 
     public static void main(String[] args) {
