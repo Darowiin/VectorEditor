@@ -13,6 +13,7 @@ repositories {
 dependencies {
     implementation "org.openjfx:javafx-controls:22"
     implementation "org.openjfx:javafx-fxml:22"
+    implementation 'org.openjfx:javafx-swing:22'
     implementation "org.apache.xmlgraphics:batik-all:1.16"
     implementation "com.google.code.gson:gson:2.10.1"
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
@@ -25,14 +26,14 @@ application {
 run {
     jvmArgs = [
             '--module-path', 'C:\\Users\\Darowiin\\.jdks\\javafx-sdk-22.0.2\\lib',
-            '--add-modules', 'javafx.controls,javafx.fxml'
+            '--add-modules', 'javafx.controls,javafx.fxml,javafx.swing'
     ]
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += [
             '--module-path', 'C:\\Users\\Darowiin\\.jdks\\javafx-sdk-22.0.2\\lib',
-            '--add-modules', 'javafx.controls,javafx.fxml'
+            '--add-modules', 'javafx.controls,javafx.fxml,javafx.swing'
     ]
 }
 

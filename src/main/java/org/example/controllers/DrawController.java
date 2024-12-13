@@ -1,5 +1,8 @@
 package org.example.controllers;
 
+import javafx.embed.swing.SwingFXUtils;
+import javafx.scene.SnapshotParameters;
+import javafx.scene.image.WritableImage;
 import org.example.enums.ToolMode;
 import org.example.models.ShapeData;
 
@@ -21,6 +24,8 @@ import org.w3c.dom.NodeList;
 import org.apache.batik.anim.dom.SAXSVGDocumentFactory;
 import org.apache.batik.util.XMLResourceDescriptor;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.lang.reflect.Type;
 import java.text.DecimalFormat;
@@ -219,8 +224,8 @@ public class DrawController {
         for (javafx.scene.Node node : contentGroup.getChildren()) {
             if (node instanceof Rectangle) {
                 Rectangle rect = (Rectangle) node;
-                svgContent.append(String.format(
-                        "<rect x=\"%f\" y=\"%f\" width=\"%f\" height=\"%f\" stroke=\"%s\" stroke-width=\"%f\" fill=\"none\" />\n",
+                svgContent.append(String.format(Locale.US,
+                        "<rect x=\"%.2f\" y=\"%.2f\" width=\"%.2f\" height=\"%.2f\" stroke=\"%s\" stroke-width=\"%.2f\" fill=\"none\" />\n",
                         rect.getX(),
                         rect.getY(),
                         rect.getWidth(),
@@ -230,8 +235,8 @@ public class DrawController {
                 ));
             } else if (node instanceof Circle) {
                 Circle circle = (Circle) node;
-                svgContent.append(String.format(
-                        "<circle cx=\"%f\" cy=\"%f\" r=\"%f\" stroke=\"%s\" stroke-width=\"%f\" fill=\"none\" />\n",
+                svgContent.append(String.format(Locale.US,
+                        "<circle cx=\"%.2f\" cy=\"%.2f\" r=\"%.2f\" stroke=\"%s\" stroke-width=\"%.2f\" fill=\"none\" />\n",
                         circle.getCenterX(),
                         circle.getCenterY(),
                         circle.getRadius(),
@@ -240,8 +245,8 @@ public class DrawController {
                 ));
             } else if (node instanceof Line) {
                 Line line = (Line) node;
-                svgContent.append(String.format(
-                        "<line x1=\"%f\" y1=\"%f\" x2=\"%f\" y2=\"%f\" stroke=\"%s\" stroke-width=\"%f\" />\n",
+                svgContent.append(String.format(Locale.US,
+                        "<line x1=\"%.2f\" y1=\"%.2f\" x2=\"%.2f\" y2=\"%.2f\" stroke=\"%s\" stroke-width=\"%.2f\" />\n",
                         line.getStartX(),
                         line.getStartY(),
                         line.getEndX(),
@@ -343,6 +348,13 @@ public class DrawController {
 
         value = value.trim().replace(',', '.');
         return decimalFormat.parse(value).doubleValue();
+    }
+
+    public void saveToPNG(File file) throws IOException {
+        WritableImage snapshot = drawingArea.snapshot(new SnapshotParameters(), null);
+        BufferedImage bufferedImage = SwingFXUtils.fromFXImage(snapshot, null);
+
+        ImageIO.write(bufferedImage, "png", file);
     }
 
     public void markAsModified() {

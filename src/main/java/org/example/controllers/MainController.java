@@ -3,6 +3,7 @@ package org.example.controllers;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -53,7 +54,7 @@ public class MainController {
     private static final double MAX_SCALE = 3.0; // Максимальный масштаб
     private static final double MIN_SCALE = 0.5; // Минимальный масштаб
 
-    private final javafx.event.EventHandler<WindowEvent> closeEventHandler = new javafx.event.EventHandler<WindowEvent>() {
+    private final EventHandler<WindowEvent> closeEventHandler = new javafx.event.EventHandler<WindowEvent>() {
         @Override
         public void handle(WindowEvent event) {
             if (DrawController.isModified()) {
@@ -83,7 +84,7 @@ public class MainController {
         }
     };
 
-    public javafx.event.EventHandler<WindowEvent> getCloseEventHandler(){
+    public EventHandler<WindowEvent> getCloseEventHandler(){
         return closeEventHandler;
     }
 
@@ -154,6 +155,18 @@ public class MainController {
         newFileMenuItem.setOnAction(event -> handleNewFile());
         openFileMenuItem.setOnAction(event -> handleOpenFile());
         saveFileMenuItem.setOnAction(event -> handleSaveFile());
+        drawingArea.sceneProperty().addListener((observable, oldScene, newScene) -> {
+            if (newScene != null) {
+                newScene.setOnKeyPressed(event -> {
+                    if (event.isControlDown() && event.getCode().toString().equals("S")) {
+                        handleSaveFile();
+                        statusBar.setText("File saved using Ctrl+S.");
+                        event.consume();
+                    }
+                });
+            }
+        });
+
         exitMenuItem.setOnAction(event -> handleExit());
 
         undoMenuItem.setOnAction(event -> statusBar.setText("Undo: Not implemented yet."));
@@ -178,6 +191,29 @@ public class MainController {
                 statusBar.setText("Zoom Out: " + (int) (scaleFactor * 100) + "%");
             } else {
                 statusBar.setText("Minimum zoom level reached.");
+            }
+        });
+
+        drawingArea.setOnScroll(event -> {
+            if (event.isControlDown()) {
+                if (event.getDeltaY() > 0) { // Прокрутка вверх
+                    if (scaleFactor < MAX_SCALE) {
+                        scaleFactor += ZOOM_STEP;
+                        applyZoom();
+                        statusBar.setText("Zoom In: " + (int) (scaleFactor * 100) + "%");
+                    } else {
+                        statusBar.setText("Maximum zoom level reached.");
+                    }
+                } else if (event.getDeltaY() < 0) { // Прокрутка вниз
+                    if (scaleFactor > MIN_SCALE) {
+                        scaleFactor -= ZOOM_STEP;
+                        applyZoom();
+                        statusBar.setText("Zoom Out: " + (int) (scaleFactor * 100) + "%");
+                    } else {
+                        statusBar.setText("Minimum zoom level reached.");
+                    }
+                }
+                event.consume();
             }
         });
 
@@ -260,7 +296,7 @@ public class MainController {
 
     private void handleSaveFile() {
         // Создаём список форматов
-        List<String> choices = List.of("JSON", "SVG");
+        List<String> choices = List.of("JSON", "SVG", "PNG");
 
         // Создаём диалог выбора формата
         ChoiceDialog<String> dialog = new ChoiceDialog<>("JSON", choices);
@@ -279,6 +315,9 @@ public class MainController {
                 case "SVG":
                     fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("SVG Files", "*.svg"));
                     break;
+                case "PNG":
+                    fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PNG Files", "*.png"));
+                    break;
             }
 
             File file = fileChooser.showSaveDialog(drawingArea.getScene().getWindow());
@@ -288,6 +327,8 @@ public class MainController {
                         drawController.saveToJSON(file);
                     } else if ("SVG".equals(format)) {
                         drawController.saveToSvg(file);
+                    } else if ("PNG".equals(format)) {
+                        drawController.saveToPNG(file);
                     }
                     drawController.resetModificationStatus();
                     statusBar.setText("File saved: " + file.getName() + " as " + format);
