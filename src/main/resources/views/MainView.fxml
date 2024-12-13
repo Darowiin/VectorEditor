@@ -2,8 +2,9 @@
 
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.*?>
 
-<BorderPane xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.MainController">
+<BorderPane xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.controllers.MainController">
     <!-- Верхнее меню -->
     <top>
         <MenuBar>
@@ -40,19 +41,35 @@
 
     <!-- Центральная рабочая область -->
     <center>
-            <AnchorPane fx:id="drawingArea" style="-fx-background-color: #f5f5f5;">
-            </AnchorPane>
+        <Pane fx:id="drawingArea" style="-fx-background-color: #f5f5f5;">
+            <clip>
+                <Rectangle/>
+            </clip>
+        </Pane>
     </center>
 
     <!-- Правая панель свойств -->
     <right>
-        <VBox spacing="10" style="-fx-padding: 10;">
-            <TextField fx:id="shapeColorField" promptText="Color"/>
+        <VBox spacing="10" style="-fx-padding: 10; -fx-background-color: #eaeaea;">
+            <Label text="Properties" style="-fx-font-weight: bold;" />
+
+            <!-- Предустановленные цвета -->
+            <HBox spacing="5">
+                <Button fx:id="colorBlack" style="-fx-background-color: black;" />
+                <Button fx:id="colorRed" style="-fx-background-color: red;" />
+                <Button fx:id="colorBlue" style="-fx-background-color: blue;" />
+                <Button fx:id="colorGreen" style="-fx-background-color: green;" />
+                <Button fx:id="colorYellow" style="-fx-background-color: yellow;" />
+            </HBox>
+
+            <!-- Выбор через графический интерфейс -->
+            <Label text="Изменение цвета" />
+            <ColorPicker fx:id="colorPicker" />
         </VBox>
     </right>
 
     <!-- Нижняя панель статуса -->
     <bottom>
-        <Label fx:id="statusBar" text="Ready" style="-fx-padding: 5; -fx-background-color: #eaeaea;"/>
+        <Label fx:id="statusBar" style="-fx-padding: 5; -fx-background-color: #eaeaea;" text="Ready" />
     </bottom>
 </BorderPane>
