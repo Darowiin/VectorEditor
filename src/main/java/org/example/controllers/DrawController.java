@@ -1,13 +1,7 @@
 package org.example.controllers;
 
-import javafx.embed.swing.SwingFXUtils;
-import javafx.scene.SnapshotParameters;
-import javafx.scene.image.WritableImage;
+import javafx.scene.Cursor;
 import org.example.enums.ToolMode;
-import org.example.models.ShapeData;
-
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 
 import javafx.fxml.FXML;
 import javafx.scene.Group;
@@ -17,27 +11,11 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.apache.batik.anim.dom.SAXSVGDocumentFactory;
-import org.apache.batik.util.XMLResourceDescriptor;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.*;
-import java.lang.reflect.Type;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
 
 public class DrawController {
     @FXML Pane drawingArea;
-    private Group contentGroup; // Контейнер для фигур
+    private Group contentGroup;
     private ToolController toolController;
     private ColorController colorController;
 
@@ -121,13 +99,200 @@ public class DrawController {
 
     private void handleMouseReleased(MouseEvent event) {
         if (currentRectangle != null) {
+            enableResizing(currentRectangle);
             currentRectangle = null;
         } else if (currentCircle != null) {
+            enableResizing(currentCircle);
             currentCircle = null;
         } else if (currentLine != null) {
+            enableResizing(currentLine);
             currentLine = null;
         }
         markAsModified();
+    }
+
+    protected void enableResizing(javafx.scene.shape.Shape shape) {
+        if (shape instanceof Line) {
+            enableLineResizing((Line) shape);
+        } else if (shape instanceof Circle) {
+            enableCircleResizing((Circle) shape);
+        } else if (shape instanceof Rectangle) {
+            enableRectangleResizing((Rectangle) shape);
+        }
+    }
+
+    private void enableLineResizing(Line line) {
+        javafx.scene.shape.Circle startHandle = createHandle(line.getStartX(), line.getStartY());
+        javafx.scene.shape.Circle endHandle = createHandle(line.getEndX(), line.getEndY());
+
+        toggleHandlesVisibility(false, startHandle, endHandle);
+
+        line.setOnMouseClicked(e -> {
+            boolean visible = !startHandle.isVisible();
+            toggleHandlesVisibility(visible, startHandle, endHandle);
+        });
+
+        startHandle.setOnMouseDragged(e -> {
+            line.setStartX(e.getX());
+            line.setStartY(e.getY());
+            startHandle.setCenterX(e.getX());
+            startHandle.setCenterY(e.getY());
+        });
+
+        endHandle.setOnMouseDragged(e -> {
+            line.setEndX(e.getX());
+            line.setEndY(e.getY());
+            endHandle.setCenterX(e.getX());
+            endHandle.setCenterY(e.getY());
+        });
+
+        contentGroup.getChildren().addAll(startHandle, endHandle);
+    }
+
+    private void enableCircleResizing(Circle circle) {
+        javafx.scene.shape.Circle radiusHandle = createHandle(circle.getCenterX() + circle.getRadius(), circle.getCenterY());
+
+
+        toggleHandlesVisibility(false, radiusHandle);
+
+        circle.setOnMouseClicked(e -> {
+            boolean visible = !radiusHandle.isVisible();
+            toggleHandlesVisibility(visible, radiusHandle);
+        });
+
+        radiusHandle.setOnMouseDragged(e -> {
+            double newRadius = Math.sqrt(Math.pow(e.getX() - circle.getCenterX(), 2) + Math.pow(e.getY() - circle.getCenterY(), 2));
+            circle.setRadius(newRadius);
+            radiusHandle.setCenterX(circle.getCenterX() + circle.getRadius());
+        });
+
+        contentGroup.getChildren().add(radiusHandle);
+    }
+
+    private void enableRectangleResizing(Rectangle rectangle) {
+        // Создаем "ручки" для углов
+        javafx.scene.shape.Circle topLeftHandle = createHandle(rectangle.getX(), rectangle.getY());
+        javafx.scene.shape.Circle topRightHandle = createHandle(rectangle.getX() + rectangle.getWidth(), rectangle.getY());
+        javafx.scene.shape.Circle bottomLeftHandle = createHandle(rectangle.getX(), rectangle.getY() + rectangle.getHeight());
+        javafx.scene.shape.Circle bottomRightHandle = createHandle(rectangle.getX() + rectangle.getWidth(), rectangle.getY() + rectangle.getHeight());
+
+        toggleHandlesVisibility(false, topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
+
+        rectangle.setOnMouseClicked(e -> {
+            boolean visible = !topLeftHandle.isVisible(); // Переключение видимости
+            toggleHandlesVisibility(visible, topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
+        });
+
+        topLeftHandle.setOnMouseDragged(e -> {
+            double newWidth = rectangle.getX() + rectangle.getWidth() - e.getX();
+            double newHeight = rectangle.getY() + rectangle.getHeight() - e.getY();
+
+            if (newWidth > 0 && newHeight > 0) {
+                rectangle.setX(e.getX());
+                rectangle.setY(e.getY());
+                rectangle.setWidth(newWidth);
+                rectangle.setHeight(newHeight);
+            } else if (newWidth <= 0) {
+                rectangle.setX(rectangle.getX() + rectangle.getWidth());
+                rectangle.setWidth(-newWidth);
+            } else if (newHeight <= 0) {
+                rectangle.setY(rectangle.getY() + rectangle.getHeight());
+                rectangle.setHeight(-newHeight);
+            }
+
+            updateRectangleHandles(rectangle, topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
+        });
+
+        topRightHandle.setOnMouseDragged(e -> {
+            double newWidth = e.getX() - rectangle.getX();
+            double newHeight = rectangle.getY() + rectangle.getHeight() - e.getY();
+
+            if (newWidth > 0 && newHeight > 0) {
+                rectangle.setY(e.getY());
+                rectangle.setWidth(newWidth);
+                rectangle.setHeight(newHeight);
+            } else if (newWidth <= 0) {
+                rectangle.setX(e.getX());
+                rectangle.setWidth(-newWidth);
+            } else if (newHeight <= 0) {
+                rectangle.setY(rectangle.getY() + rectangle.getHeight());
+                rectangle.setHeight(-newHeight);
+            }
+
+            updateRectangleHandles(rectangle, topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
+        });
+
+        bottomLeftHandle.setOnMouseDragged(e -> {
+            double newWidth = rectangle.getX() + rectangle.getWidth() - e.getX();
+            double newHeight = e.getY() - rectangle.getY();
+
+            if (newWidth > 0 && newHeight > 0) {
+                rectangle.setX(e.getX());
+                rectangle.setWidth(newWidth);
+                rectangle.setHeight(newHeight);
+            } else if (newWidth <= 0) {
+                rectangle.setX(rectangle.getX() + rectangle.getWidth());
+                rectangle.setWidth(-newWidth);
+            } else if (newHeight <= 0) {
+                rectangle.setY(e.getY());
+                rectangle.setHeight(-newHeight);
+            }
+
+            updateRectangleHandles(rectangle, topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
+        });
+
+        bottomRightHandle.setOnMouseDragged(e -> {
+            double newWidth = e.getX() - rectangle.getX();
+            double newHeight = e.getY() - rectangle.getY();
+
+            if (newWidth > 0 && newHeight > 0) {
+                rectangle.setWidth(newWidth);
+                rectangle.setHeight(newHeight);
+            } else if (newWidth <= 0) {
+                rectangle.setX(e.getX());
+                rectangle.setWidth(-newWidth);
+            } else if (newHeight <= 0) {
+                rectangle.setY(e.getY());
+                rectangle.setHeight(-newHeight);
+            }
+
+            updateRectangleHandles(rectangle, topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
+        });
+
+        contentGroup.getChildren().addAll(topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
+    }
+
+    private javafx.scene.shape.Circle createHandle(double x, double y) {
+        javafx.scene.shape.Circle handle = new javafx.scene.shape.Circle(x, y, 5);
+        handle.setFill(Color.RED);
+        handle.setStroke(Color.BLACK);
+        handle.setStrokeWidth(1);
+        handle.setCursor(Cursor.HAND);
+        handle.setId("draggable-handle");
+        return handle;
+    }
+
+    private void updateRectangleHandles(Rectangle rectangle, javafx.scene.shape.Circle topLeftHandle,
+                                        javafx.scene.shape.Circle topRightHandle,
+                                        javafx.scene.shape.Circle bottomLeftHandle,
+                                        javafx.scene.shape.Circle bottomRightHandle) {
+        topLeftHandle.setCenterX(rectangle.getX());
+        topLeftHandle.setCenterY(rectangle.getY());
+
+        topRightHandle.setCenterX(rectangle.getX() + rectangle.getWidth());
+        topRightHandle.setCenterY(rectangle.getY());
+
+        bottomLeftHandle.setCenterX(rectangle.getX());
+        bottomLeftHandle.setCenterY(rectangle.getY() + rectangle.getHeight());
+
+        bottomRightHandle.setCenterX(rectangle.getX() + rectangle.getWidth());
+        bottomRightHandle.setCenterY(rectangle.getY() + rectangle.getHeight());
+    }
+
+    private void toggleHandlesVisibility(boolean visible, javafx.scene.shape.Circle... handles) {
+        for (javafx.scene.shape.Circle handle : handles) {
+            handle.setVisible(visible);
+        }
     }
 
     public void clearCanvas() {
@@ -136,225 +301,6 @@ public class DrawController {
 
     public Group getContentGroup() {
         return contentGroup;
-    }
-
-    public void saveToJSON(File file) throws IOException {
-        List<ShapeData> shapeDataList = new ArrayList<>();
-        for (javafx.scene.Node node : contentGroup.getChildren()) {
-            if (node instanceof Rectangle) {
-                Rectangle rectangle = (Rectangle) node;
-                ShapeData data = new ShapeData();
-                data.setType("rectangle");
-                data.setX(rectangle.getX());
-                data.setY(rectangle.getY());
-                data.setWidth(rectangle.getWidth());
-                data.setHeight(rectangle.getHeight());
-                data.setStrokeColor(rectangle.getStroke().toString());
-                data.setStrokeWidth(rectangle.getStrokeWidth());
-                shapeDataList.add(data);
-            } else if (node instanceof Circle) {
-                Circle circle = (Circle) node;
-                ShapeData data = new ShapeData();
-                data.setType("circle");
-                data.setCenterX(circle.getCenterX());
-                data.setCenterY(circle.getCenterY());
-                data.setRadius(circle.getRadius());
-                data.setStrokeColor(circle.getStroke().toString());
-                data.setStrokeWidth(circle.getStrokeWidth());
-                shapeDataList.add(data);
-            } else if (node instanceof Line) {
-                Line line = (Line) node;
-                ShapeData data = new ShapeData();
-                data.setType("line");
-                data.setX(line.getStartX());
-                data.setY(line.getStartY());
-                data.setWidth(line.getEndX());
-                data.setHeight(line.getEndY());
-                data.setStrokeColor(line.getStroke().toString());
-                data.setStrokeWidth(line.getStrokeWidth());
-                shapeDataList.add(data);
-            }
-        }
-        Gson gson = new Gson();
-        try (Writer writer = new FileWriter(file)) {
-            gson.toJson(shapeDataList, writer);
-        }
-    }
-
-    public void loadFromJSON(File file) throws IOException {
-        Gson gson = new Gson();
-        Type listType = new TypeToken<List<ShapeData>>() {}.getType();
-        try (Reader reader = new FileReader(file)) {
-            List<ShapeData> shapeDataList = gson.fromJson(reader, listType);
-            contentGroup.getChildren().clear();
-            for (ShapeData data : shapeDataList) {
-                switch (data.getType()) {
-                    case "rectangle":
-                        Rectangle rectangle = new Rectangle(data.getX(), data.getY(), data.getWidth(), data.getHeight());
-                        rectangle.setStroke(Color.web(data.getStrokeColor()));
-                        rectangle.setStrokeWidth(data.getStrokeWidth());
-                        rectangle.setFill(Color.TRANSPARENT);
-                        contentGroup.getChildren().add(rectangle);
-                        break;
-                    case "circle":
-                        Circle circle = new Circle(data.getCenterX(), data.getCenterY(), data.getRadius());
-                        circle.setStroke(Color.web(data.getStrokeColor()));
-                        circle.setStrokeWidth(data.getStrokeWidth());
-                        circle.setFill(Color.TRANSPARENT);
-                        contentGroup.getChildren().add(circle);
-                        break;
-                    case "line":
-                        Line line = new Line(data.getX(), data.getY(), data.getWidth(), data.getHeight());
-                        line.setStroke(Color.web(data.getStrokeColor()));
-                        line.setStrokeWidth(data.getStrokeWidth());
-                        contentGroup.getChildren().add(line);
-                        break;
-                }
-            }
-        }
-    }
-
-    public void saveToSvg(File file) throws IOException {
-        StringBuilder svgContent = new StringBuilder();
-
-        // Начало SVG-файла
-        svgContent.append("<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">\n");
-
-        // Преобразование каждого элемента contentGroup в SVG
-        for (javafx.scene.Node node : contentGroup.getChildren()) {
-            if (node instanceof Rectangle) {
-                Rectangle rect = (Rectangle) node;
-                svgContent.append(String.format(Locale.US,
-                        "<rect x=\"%.2f\" y=\"%.2f\" width=\"%.2f\" height=\"%.2f\" stroke=\"%s\" stroke-width=\"%.2f\" fill=\"none\" />\n",
-                        rect.getX(),
-                        rect.getY(),
-                        rect.getWidth(),
-                        rect.getHeight(),
-                        toHexString((Color) rect.getStroke()),
-                        rect.getStrokeWidth()
-                ));
-            } else if (node instanceof Circle) {
-                Circle circle = (Circle) node;
-                svgContent.append(String.format(Locale.US,
-                        "<circle cx=\"%.2f\" cy=\"%.2f\" r=\"%.2f\" stroke=\"%s\" stroke-width=\"%.2f\" fill=\"none\" />\n",
-                        circle.getCenterX(),
-                        circle.getCenterY(),
-                        circle.getRadius(),
-                        toHexString((Color) circle.getStroke()),
-                        circle.getStrokeWidth()
-                ));
-            } else if (node instanceof Line) {
-                Line line = (Line) node;
-                svgContent.append(String.format(Locale.US,
-                        "<line x1=\"%.2f\" y1=\"%.2f\" x2=\"%.2f\" y2=\"%.2f\" stroke=\"%s\" stroke-width=\"%.2f\" />\n",
-                        line.getStartX(),
-                        line.getStartY(),
-                        line.getEndX(),
-                        line.getEndY(),
-                        toHexString((Color) line.getStroke()),
-                        line.getStrokeWidth()
-                ));
-            }
-        }
-
-        // Конец SVG-файла
-        svgContent.append("</svg>");
-
-        // Запись в файл
-        try (FileWriter writer = new FileWriter(file)) {
-            writer.write(svgContent.toString());
-        }
-    }
-
-    // Метод для преобразования Color в строку HEX
-    private String toHexString(Color color) {
-        return String.format("#%02X%02X%02X",
-                (int) (color.getRed() * 255),
-                (int) (color.getGreen() * 255),
-                (int) (color.getBlue() * 255)
-        );
-    }
-
-    public void loadFromSvg(File file) throws IOException, ParseException {
-        String parser = XMLResourceDescriptor.getXMLParserClassName();
-        SAXSVGDocumentFactory factory = new SAXSVGDocumentFactory(parser);
-        Document doc = factory.createDocument(file.toURI().toString());
-
-        contentGroup.getChildren().clear();
-        NodeList elements = doc.getDocumentElement().getChildNodes();
-
-        for (int i = 0; i < elements.getLength(); i++) {
-            processSvgNode(elements.item(i));
-        }
-    }
-    private void processSvgNode(Node node) throws ParseException {
-        if (node.getNodeType() == Node.ELEMENT_NODE) {
-            Element element = (Element) node;
-
-            switch (element.getTagName()) {
-                case "rect":
-                    Rectangle rect = new Rectangle(
-                            parseDouble(element.getAttribute("x")),
-                            parseDouble(element.getAttribute("y")),
-                            parseDouble(element.getAttribute("width")),
-                            parseDouble(element.getAttribute("height"))
-                    );
-                    rect.setStroke(Color.web(element.getAttribute("stroke")));
-                    rect.setStrokeWidth(parseDouble(element.getAttribute("stroke-width")));
-                    rect.setFill(Color.TRANSPARENT);
-                    contentGroup.getChildren().add(rect);
-                    break;
-
-                case "circle":
-                    Circle circle = new Circle(
-                            parseDouble(element.getAttribute("cx")),
-                            parseDouble(element.getAttribute("cy")),
-                            parseDouble(element.getAttribute("r"))
-                    );
-                    circle.setStroke(Color.web(element.getAttribute("stroke")));
-                    circle.setStrokeWidth(parseDouble(element.getAttribute("stroke-width")));
-                    circle.setFill(Color.TRANSPARENT);
-                    contentGroup.getChildren().add(circle);
-                    break;
-
-                case "line":
-                    Line line = new Line(
-                            parseDouble(element.getAttribute("x1")),
-                            parseDouble(element.getAttribute("y1")),
-                            parseDouble(element.getAttribute("x2")),
-                            parseDouble(element.getAttribute("y2"))
-                    );
-                    line.setStroke(Color.web(element.getAttribute("stroke")));
-                    line.setStrokeWidth(parseDouble(element.getAttribute("stroke-width")));
-                    contentGroup.getChildren().add(line);
-                    break;
-
-                case "g": // Группа
-                    NodeList children = element.getChildNodes();
-                    for (int i = 0; i < children.getLength(); i++) {
-                        processSvgNode(children.item(i));
-                    }
-                    break;
-            }
-        }
-    }
-    private double parseDouble(String value) throws NumberFormatException, ParseException {
-        DecimalFormatSymbols symbols = new DecimalFormatSymbols(Locale.getDefault());
-        symbols.setDecimalSeparator('.');
-        symbols.setGroupingSeparator(',');
-
-        DecimalFormat decimalFormat = new DecimalFormat();
-        decimalFormat.setDecimalFormatSymbols(symbols);
-
-        value = value.trim().replace(',', '.');
-        return decimalFormat.parse(value).doubleValue();
-    }
-
-    public void saveToPNG(File file) throws IOException {
-        WritableImage snapshot = drawingArea.snapshot(new SnapshotParameters(), null);
-        BufferedImage bufferedImage = SwingFXUtils.fromFXImage(snapshot, null);
-
-        ImageIO.write(bufferedImage, "png", file);
     }
 
     public void markAsModified() {

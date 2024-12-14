@@ -3,7 +3,6 @@ package org.example.controllers;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
-import javafx.scene.input.KeyCode;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -48,10 +47,11 @@ public class MainController {
     private ToolController toolController;
     private ColorController colorController;
     private DrawController drawController;
+    private FileController fileController;
 
     private double scaleFactor = 1.0; // Текущий масштаб
     private static final double ZOOM_STEP = 0.1; // Шаг изменения масштаба
-    private static final double MAX_SCALE = 3.0; // Максимальный масштаб
+    private static final double MAX_SCALE = 5.0; // Максимальный масштаб
     private static final double MIN_SCALE = 0.5; // Минимальный масштаб
 
     private final EventHandler<WindowEvent> closeEventHandler = new javafx.event.EventHandler<WindowEvent>() {
@@ -74,9 +74,14 @@ public class MainController {
                 if (result.isPresent()) {
                     if (result.get() == saveButton) {
                         handleSaveFile();
+                        System.exit(0);
                     } else if (result.get() == discardButton) {
                         System.exit(0);
+                    } else if (result.get() == cancelButton) {
+                        event.consume();
                     }
+                } else {
+                    event.consume();
                 }
             } else {
                 System.exit(0);
@@ -93,6 +98,7 @@ public class MainController {
         toolController = new ToolController();
         colorController = new ColorController();
         drawController = new DrawController();
+        fileController = new FileController();
 
         // Установка обработчиков для кнопок инструментов
         selectToolButton.setOnAction(event -> {
@@ -143,6 +149,7 @@ public class MainController {
 
         // Инициализация DrawController
         drawController.initialize(drawingArea, toolController, colorController);
+        fileController.initialize(drawController);
 
         Rectangle clip = new Rectangle();
         clip.widthProperty().bind(drawingArea.widthProperty());
@@ -281,9 +288,9 @@ public class MainController {
             if (file != null) {
                 try {
                     if ("JSON".equals(format)) {
-                        drawController.loadFromJSON(file); // Загрузка JSON
+                        fileController.loadFromJSON(file); // Загрузка JSON
                     } else if ("SVG".equals(format)) {
-                        drawController.loadFromSvg(file); // Загрузка SVG
+                        fileController.loadFromSvg(file); // Загрузка SVG
                     }
                     drawController.resetModificationStatus();
                     statusBar.setText("File loaded: " + file.getName() + " as " + format);
@@ -324,11 +331,11 @@ public class MainController {
             if (file != null) {
                 try {
                     if ("JSON".equals(format)) {
-                        drawController.saveToJSON(file);
+                        fileController.saveToJSON(file);
                     } else if ("SVG".equals(format)) {
-                        drawController.saveToSvg(file);
+                        fileController.saveToSvg(file);
                     } else if ("PNG".equals(format)) {
-                        drawController.saveToPNG(file);
+                        fileController.saveToPNG(file);
                     }
                     drawController.resetModificationStatus();
                     statusBar.setText("File saved: " + file.getName() + " as " + format);
