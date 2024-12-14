@@ -34,12 +34,17 @@ public class MainController {
     @FXML private Button rectangleToolButton;
     @FXML private Button circleToolButton;
     @FXML private Button lineToolButton;
+    @FXML private Button curveToolButton;
     @FXML private Button colorBlack;
     @FXML private Button colorRed;
     @FXML private Button colorBlue;
     @FXML private Button colorGreen;
     @FXML private Button colorYellow;
     @FXML private ColorPicker colorPicker;
+    @FXML private ColorPicker fillColorPicker;
+
+    @FXML private ScrollPane drawingScrollPane;
+
     @FXML private Pane drawingArea;
 
     @FXML private Label statusBar;
@@ -52,40 +57,37 @@ public class MainController {
     private double scaleFactor = 1.0; // Текущий масштаб
     private static final double ZOOM_STEP = 0.1; // Шаг изменения масштаба
     private static final double MAX_SCALE = 5.0; // Максимальный масштаб
-    private static final double MIN_SCALE = 0.5; // Минимальный масштаб
+    private static final double MIN_SCALE = 1.0; // Минимальный масштаб
 
-    private final EventHandler<WindowEvent> closeEventHandler = new javafx.event.EventHandler<WindowEvent>() {
-        @Override
-        public void handle(WindowEvent event) {
-            if (DrawController.isModified()) {
-                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-                alert.setTitle("Exit");
-                alert.setHeaderText("You have unsaved changes.");
-                alert.setContentText("Do you want to save your changes before exiting?");
+    private final EventHandler<WindowEvent> closeEventHandler = event -> {
+        if (DrawController.isModified()) {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Exit");
+            alert.setHeaderText("You have unsaved changes.");
+            alert.setContentText("Do you want to save your changes before exiting?");
 
-                ButtonType saveButton = new ButtonType("Save");
-                ButtonType discardButton = new ButtonType("Don't Save");
-                ButtonType cancelButton = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+            ButtonType saveButton = new ButtonType("Save");
+            ButtonType discardButton = new ButtonType("Don't Save");
+            ButtonType cancelButton = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
 
-                alert.getButtonTypes().setAll(saveButton, discardButton, cancelButton);
+            alert.getButtonTypes().setAll(saveButton, discardButton, cancelButton);
 
-                Optional<ButtonType> result = alert.showAndWait();
+            Optional<ButtonType> result = alert.showAndWait();
 
-                if (result.isPresent()) {
-                    if (result.get() == saveButton) {
-                        handleSaveFile();
-                        System.exit(0);
-                    } else if (result.get() == discardButton) {
-                        System.exit(0);
-                    } else if (result.get() == cancelButton) {
-                        event.consume();
-                    }
-                } else {
+            if (result.isPresent()) {
+                if (result.get() == saveButton) {
+                    handleSaveFile();
+                    System.exit(0);
+                } else if (result.get() == discardButton) {
+                    System.exit(0);
+                } else if (result.get() == cancelButton) {
                     event.consume();
                 }
             } else {
-                System.exit(0);
+                event.consume();
             }
+        } else {
+            System.exit(0);
         }
     };
 
@@ -100,7 +102,6 @@ public class MainController {
         drawController = new DrawController();
         fileController = new FileController();
 
-        // Установка обработчиков для кнопок инструментов
         selectToolButton.setOnAction(event -> {
             toolController.setCurrentTool(ToolMode.SELECT);
             statusBar.setText("Tool: Select");
@@ -117,8 +118,11 @@ public class MainController {
             toolController.setCurrentTool(ToolMode.LINE);
             statusBar.setText("Tool: Line");
         });
+        curveToolButton.setOnAction(event -> {
+            toolController.setCurrentTool(ToolMode.CURVE);
+            statusBar.setText("Tool: Curve");
+        });
 
-        //Изменение цвета
         colorBlack.setOnAction(event -> {
             colorController.setCurrentColor(Color.BLACK);
             statusBar.setText("Color: Black");
@@ -140,14 +144,16 @@ public class MainController {
             statusBar.setText("Color: Yellow");
         });
 
-        // Установка обработчика для ColorPicker
         colorPicker.setOnAction(event -> {
             Color selectedColor = colorPicker.getValue();
             colorController.setCurrentColor(selectedColor);
             statusBar.setText("Color: " + selectedColor.toString());
         });
+        this.fillColorPicker.setValue(colorController.getFillColor());
+        this.fillColorPicker.setOnAction(event ->
+                colorController.setFillColor(fillColorPicker.getValue())
+        );
 
-        // Инициализация DrawController
         drawController.initialize(drawingArea, toolController, colorController);
         fileController.initialize(drawController);
 
@@ -158,7 +164,6 @@ public class MainController {
 
         drawController.resetModificationStatus();
 
-        // Установка обработчиков для меню
         newFileMenuItem.setOnAction(event -> handleNewFile());
         openFileMenuItem.setOnAction(event -> handleOpenFile());
         saveFileMenuItem.setOnAction(event -> handleSaveFile());
@@ -190,7 +195,6 @@ public class MainController {
             }
         });
 
-        // Zoom Out
         zoomOutMenuItem.setOnAction(event -> {
             if (scaleFactor > MIN_SCALE) {
                 scaleFactor -= ZOOM_STEP;
@@ -203,7 +207,7 @@ public class MainController {
 
         drawingArea.setOnScroll(event -> {
             if (event.isControlDown()) {
-                if (event.getDeltaY() > 0) { // Прокрутка вверх
+                if (event.getDeltaY() > 0) {
                     if (scaleFactor < MAX_SCALE) {
                         scaleFactor += ZOOM_STEP;
                         applyZoom();
@@ -211,7 +215,7 @@ public class MainController {
                     } else {
                         statusBar.setText("Maximum zoom level reached.");
                     }
-                } else if (event.getDeltaY() < 0) { // Прокрутка вниз
+                } else if (event.getDeltaY() < 0) {
                     if (scaleFactor > MIN_SCALE) {
                         scaleFactor -= ZOOM_STEP;
                         applyZoom();
@@ -224,12 +228,11 @@ public class MainController {
             }
         });
 
-        aboutMenuItem.setOnAction(event -> statusBar.setText("About: Vector Editor v1.0"));
+        aboutMenuItem.setOnAction(event -> statusBar.setText("About: Vectorium v1.0"));
     }
 
     private void handleNewFile() {
         if (DrawController.isModified()) {
-            // Показать диалог с вопросом о сохранении
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle("Save Changes");
             alert.setHeaderText("You have unsaved changes.");
@@ -259,21 +262,17 @@ public class MainController {
     }
 
     private void handleOpenFile() {
-        // Создаём список форматов
         List<String> choices = List.of("JSON", "SVG");
 
-        // Создаём диалог выбора формата
         ChoiceDialog<String> dialog = new ChoiceDialog<>("JSON", choices);
         dialog.setTitle("Open File");
         dialog.setHeaderText("Choose a file format");
         dialog.setContentText("Format:");
 
-        // Показываем диалог
         dialog.showAndWait().ifPresent(format -> {
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Open File");
 
-            // Настройка фильтра расширений в зависимости от формата
             switch (format) {
                 case "JSON":
                     fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
@@ -283,14 +282,13 @@ public class MainController {
                     break;
             }
 
-            // Показываем диалог выбора файла
             File file = fileChooser.showOpenDialog(drawingArea.getScene().getWindow());
             if (file != null) {
                 try {
                     if ("JSON".equals(format)) {
-                        fileController.loadFromJSON(file); // Загрузка JSON
+                        fileController.loadFromJSON(file);
                     } else if ("SVG".equals(format)) {
-                        fileController.loadFromSvg(file); // Загрузка SVG
+                        fileController.loadFromSvg(file);
                     }
                     drawController.resetModificationStatus();
                     statusBar.setText("File loaded: " + file.getName() + " as " + format);
@@ -302,16 +300,13 @@ public class MainController {
     }
 
     private void handleSaveFile() {
-        // Создаём список форматов
         List<String> choices = List.of("JSON", "SVG", "PNG");
 
-        // Создаём диалог выбора формата
         ChoiceDialog<String> dialog = new ChoiceDialog<>("JSON", choices);
         dialog.setTitle("Save File");
         dialog.setHeaderText("Choose a file format");
         dialog.setContentText("Format:");
 
-        // Показываем диалог
         dialog.showAndWait().ifPresent(format -> {
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Save File");
@@ -366,12 +361,10 @@ public class MainController {
                 if (result.get() == saveButton) {
                     handleSaveFile();
                 } else if (result.get() == discardButton) {
-                    // Закрыть приложение
                     System.exit(0);
                 }
             }
         } else {
-            // Если изменений нет, просто закрыть приложение
             System.exit(0);
         }
     }

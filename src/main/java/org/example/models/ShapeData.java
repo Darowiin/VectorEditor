@@ -10,6 +10,7 @@ public class ShapeData {
     private double centerY;
     private double radius;
     private String strokeColor;
+    private String fillColor;
     private double strokeWidth;
 
     // Геттеры и сеттеры
@@ -67,6 +68,8 @@ public class ShapeData {
     public void setStrokeColor(String strokeColor) {
         this.strokeColor = strokeColor;
     }
+    public String getFillColor() {return fillColor; }
+    public void setFillColor(String fillColor) {this.fillColor = fillColor; }
     public double getStrokeWidth() {
         return strokeWidth;
     }

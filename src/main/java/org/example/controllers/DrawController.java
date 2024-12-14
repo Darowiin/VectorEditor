@@ -1,6 +1,7 @@
 package org.example.controllers;
 
 import javafx.scene.Cursor;
+import javafx.scene.shape.*;
 import org.example.enums.ToolMode;
 
 import javafx.fxml.FXML;
@@ -8,9 +9,6 @@ import javafx.scene.Group;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
-import javafx.scene.shape.Line;
-import javafx.scene.shape.Rectangle;
 
 
 public class DrawController {
@@ -22,6 +20,7 @@ public class DrawController {
     private Rectangle currentRectangle;
     private Circle currentCircle;
     private Line currentLine;
+    private Path currentCurve;
 
     private double startX, startY;
     private static boolean isModified = false;
@@ -31,11 +30,9 @@ public class DrawController {
         this.toolController = toolController;
         this.colorController = colorController;
 
-        // Создаём Group и добавляем его в drawingArea
         contentGroup = new Group();
         drawingArea.getChildren().add(contentGroup);
 
-        // Привязка событий мыши
         drawingArea.setOnMousePressed(this::handleMousePressed);
         drawingArea.setOnMouseDragged(this::handleMouseDragged);
         drawingArea.setOnMouseReleased(this::handleMouseReleased);
@@ -50,17 +47,18 @@ public class DrawController {
 
         ToolMode currentTool = toolController.getCurrentTool();
         Color currentColor = colorController.getCurrentColor();
+        Color currentColorFill = colorController.getFillColor();
 
         if (currentTool == ToolMode.RECTANGLE) {
             currentRectangle = new Rectangle(startX, startY, 0, 0);
-            currentRectangle.setFill(Color.TRANSPARENT);
+            currentRectangle.setFill(currentColorFill);
             currentRectangle.setStroke(currentColor);
             currentRectangle.setStrokeWidth(2);
             contentGroup.getChildren().add(currentRectangle);
             markAsModified();
         } else if (currentTool == ToolMode.CIRCLE) {
             currentCircle = new Circle(startX, startY, 0);
-            currentCircle.setFill(Color.TRANSPARENT);
+            currentCircle.setFill(currentColorFill);
             currentCircle.setStroke(currentColor);
             currentCircle.setStrokeWidth(2);
             contentGroup.getChildren().add(currentCircle);
@@ -70,6 +68,18 @@ public class DrawController {
             currentLine.setStroke(currentColor);
             currentLine.setStrokeWidth(2);
             contentGroup.getChildren().add(currentLine);
+            markAsModified();
+        }
+        if (currentTool == ToolMode.CURVE) {
+            currentCurve = new Path();
+            currentCurve.setStroke(currentColor);
+            currentCurve.setStrokeWidth(2);
+            currentCurve.setFill(null);
+
+            MoveTo moveTo = new MoveTo(startX, startY);
+            currentCurve.getElements().add(moveTo);
+
+            contentGroup.getChildren().add(currentCurve);
             markAsModified();
         }
     }
@@ -95,6 +105,19 @@ public class DrawController {
             currentLine.setEndY(localY);
             markAsModified();
         }
+        if (currentCurve != null) {
+            PathElement lastElement = currentCurve.getElements().get(currentCurve.getElements().size() - 1);
+
+            if (lastElement instanceof QuadCurveTo) {
+                QuadCurveTo quad = (QuadCurveTo) lastElement;
+                quad.setControlX(localX);
+                quad.setControlY(localY);
+            } else {
+                QuadCurveTo quadCurveTo = new QuadCurveTo(startX, startY, localX, localY);
+                currentCurve.getElements().add(quadCurveTo);
+            }
+            markAsModified();
+        }
     }
 
     private void handleMouseReleased(MouseEvent event) {
@@ -107,6 +130,9 @@ public class DrawController {
         } else if (currentLine != null) {
             enableResizing(currentLine);
             currentLine = null;
+        } else if (currentCurve != null) {
+            enableResizing(currentCurve);
+            currentCurve = null;
         }
         markAsModified();
     }
@@ -118,6 +144,55 @@ public class DrawController {
             enableCircleResizing((Circle) shape);
         } else if (shape instanceof Rectangle) {
             enableRectangleResizing((Rectangle) shape);
+        } else if (shape instanceof Path) {
+            enableCurveResizing((Path) shape);
+        }
+    }
+
+    private void enableCurveResizing(Path shape) {
+        for (PathElement element : shape.getElements()) {
+            if (element instanceof MoveTo moveTo) {
+                javafx.scene.shape.Circle moveHandle = createHandle(moveTo.getX(), moveTo.getY());
+
+                moveHandle.setOnMouseDragged(e -> {
+                    moveTo.setX(e.getX());
+                    moveTo.setY(e.getY());
+                    moveHandle.setCenterX(e.getX());
+                    moveHandle.setCenterY(e.getY());
+                });
+
+                contentGroup.getChildren().add(moveHandle);
+            } else if (element instanceof QuadCurveTo quadCurveTo) {
+                javafx.scene.shape.Circle controlHandle = createHandle(quadCurveTo.getControlX(), quadCurveTo.getControlY());
+                javafx.scene.shape.Circle endHandle = createHandle(quadCurveTo.getX(), quadCurveTo.getY());
+
+                controlHandle.setOnMouseDragged(e -> {
+                    quadCurveTo.setControlX(e.getX());
+                    quadCurveTo.setControlY(e.getY());
+                    controlHandle.setCenterX(e.getX());
+                    controlHandle.setCenterY(e.getY());
+                });
+
+                endHandle.setOnMouseDragged(e -> {
+                    quadCurveTo.setX(e.getX());
+                    quadCurveTo.setY(e.getY());
+                    endHandle.setCenterX(e.getX());
+                    endHandle.setCenterY(e.getY());
+                });
+
+                contentGroup.getChildren().addAll(controlHandle, endHandle);
+            } else if (element instanceof LineTo lineTo) {
+                javafx.scene.shape.Circle endHandle = createHandle(lineTo.getX(), lineTo.getY());
+
+                endHandle.setOnMouseDragged(e -> {
+                    lineTo.setX(e.getX());
+                    lineTo.setY(e.getY());
+                    endHandle.setCenterX(e.getX());
+                    endHandle.setCenterY(e.getY());
+                });
+
+                contentGroup.getChildren().add(endHandle);
+            }
         }
     }
 
@@ -170,7 +245,6 @@ public class DrawController {
     }
 
     private void enableRectangleResizing(Rectangle rectangle) {
-        // Создаем "ручки" для углов
         javafx.scene.shape.Circle topLeftHandle = createHandle(rectangle.getX(), rectangle.getY());
         javafx.scene.shape.Circle topRightHandle = createHandle(rectangle.getX() + rectangle.getWidth(), rectangle.getY());
         javafx.scene.shape.Circle bottomLeftHandle = createHandle(rectangle.getX(), rectangle.getY() + rectangle.getHeight());
@@ -179,7 +253,7 @@ public class DrawController {
         toggleHandlesVisibility(false, topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
 
         rectangle.setOnMouseClicked(e -> {
-            boolean visible = !topLeftHandle.isVisible(); // Переключение видимости
+            boolean visible = !topLeftHandle.isVisible();
             toggleHandlesVisibility(visible, topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
         });
 
@@ -306,7 +380,7 @@ public class DrawController {
     public void markAsModified() {
         isModified = true;
     }
-    // Метод для сброса флага изменения
+
     public void resetModificationStatus() {
         isModified = false;
     }

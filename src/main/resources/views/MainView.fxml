@@ -9,22 +9,22 @@
     <top>
         <MenuBar>
             <Menu text="File">
-                <MenuItem fx:id="newFileMenuItem" text="New"/>
-                <MenuItem fx:id="openFileMenuItem" text="Open..."/>
-                <MenuItem fx:id="saveFileMenuItem" text="Save"/>
-                <MenuItem fx:id="exitMenuItem" text="Exit"/>
+                <MenuItem fx:id="newFileMenuItem" text="New" />
+                <MenuItem fx:id="openFileMenuItem" text="Open..." />
+                <MenuItem fx:id="saveFileMenuItem" text="Save" />
+                <MenuItem fx:id="exitMenuItem" text="Exit" />
             </Menu>
             <Menu text="Edit">
-                <MenuItem fx:id="undoMenuItem" text="Undo"/>
-                <MenuItem fx:id="redoMenuItem" text="Redo"/>
-                <MenuItem fx:id="deleteMenuItem" text="Delete"/>
+                <MenuItem fx:id="undoMenuItem" text="Undo" />
+                <MenuItem fx:id="redoMenuItem" text="Redo" />
+                <MenuItem fx:id="deleteMenuItem" text="Delete" />
             </Menu>
             <Menu text="View">
-                <MenuItem fx:id="zoomInMenuItem" text="Zoom In"/>
-                <MenuItem fx:id="zoomOutMenuItem" text="Zoom Out"/>
+                <MenuItem fx:id="zoomInMenuItem" text="Zoom In" />
+                <MenuItem fx:id="zoomOutMenuItem" text="Zoom Out" />
             </Menu>
             <Menu text="Help">
-                <MenuItem fx:id="aboutMenuItem" text="About"/>
+                <MenuItem fx:id="aboutMenuItem" text="About" />
             </Menu>
         </MenuBar>
     </top>
@@ -32,20 +32,23 @@
     <!-- Левая панель инструментов -->
     <left>
         <VBox spacing="10" style="-fx-padding: 10;">
-            <Button fx:id="selectToolButton" text="Select"/>
-            <Button fx:id="rectangleToolButton" text="Rectangle"/>
-            <Button fx:id="circleToolButton" text="Circle"/>
-            <Button fx:id="lineToolButton" text="Line"/>
+            <Button fx:id="selectToolButton" text="Select" />
+            <Button fx:id="rectangleToolButton" text="Rectangle" />
+            <Button fx:id="circleToolButton" text="Circle" />
+            <Button fx:id="lineToolButton" text="Line" />
+            <Button fx:id="curveToolButton" text="Curve" />
         </VBox>
     </left>
 
     <!-- Центральная рабочая область -->
     <center>
-        <Pane fx:id="drawingArea" style="-fx-background-color: #FFFFFF;">
-            <clip>
-                <Rectangle/>
-            </clip>
-        </Pane>
+        <ScrollPane fx:id="drawingScrollPane" style="-fx-background-color: #FFFFFF;">
+            <Pane fx:id="drawingArea" prefWidth="2000" prefHeight="2000" style= "-fx-background-color: #FFFFFF;">
+                <clip>
+                    <Rectangle/>
+                </clip>
+            </Pane>
+        </ScrollPane>
     </center>
 
     <!-- Правая панель свойств -->
@@ -65,6 +68,7 @@
             <!-- Выбор через графический интерфейс -->
             <Label text="Цветовая палитра" />
             <ColorPicker fx:id="colorPicker" />
+            <ColorPicker fx:id="fillColorPicker" />
         </VBox>
     </right>
 

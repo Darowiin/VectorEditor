@@ -17,9 +17,11 @@ public class Main extends Application {
         MainController mainController = loader.getController();
         // Настраиваем сцену
         Scene scene = new Scene(root);
-        primaryStage.setTitle("Vector Editor");
+        primaryStage.setTitle("Vectorium");
         primaryStage.getIcons().add(new Image("/icon.png"));
         primaryStage.setScene(scene);
+        primaryStage.setWidth(800);
+        primaryStage.setHeight(600);
         primaryStage.setMaximized(true);
         primaryStage.show();
 

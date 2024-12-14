@@ -4,5 +4,6 @@ public enum ToolMode {
     SELECT,
     RECTANGLE,
     CIRCLE,
-    LINE
+    LINE,
+    CURVE
 }
