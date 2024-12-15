@@ -3,17 +3,13 @@ package org.example.controllers;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import javafx.embed.swing.SwingFXUtils;
-import javafx.fxml.FXML;
 import javafx.scene.SnapshotParameters;
 import javafx.scene.image.WritableImage;
-import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
-import javafx.scene.shape.Line;
-import javafx.scene.shape.Path;
-import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.*;
 import org.apache.batik.anim.dom.SAXSVGDocumentFactory;
 import org.apache.batik.util.XMLResourceDescriptor;
+import org.example.models.PathElementParser;
 import org.example.models.ShapeData;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -30,6 +26,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 public class FileController {
     private DrawController drawController;
@@ -53,19 +50,17 @@ public class FileController {
                 data.setStrokeWidth(rectangle.getStrokeWidth());
                 data.setFillColor(rectangle.getFill().toString()); // Заливка
                 shapeDataList.add(data);
-            } else if (node instanceof Circle) {
-                Circle circle = (Circle) node;
-                if ("draggable-handle".equals(circle.getId())) {
-                    continue;
-                }
+            } else if (node instanceof Ellipse) {
+                Ellipse ellipse = (Ellipse) node;
                 ShapeData data = new ShapeData();
-                data.setType("circle");
-                data.setCenterX(circle.getCenterX());
-                data.setCenterY(circle.getCenterY());
-                data.setRadius(circle.getRadius());
-                data.setStrokeColor(circle.getStroke().toString());
-                data.setStrokeWidth(circle.getStrokeWidth());
-                data.setFillColor(circle.getFill().toString()); // Заливка
+                data.setType("ellipse");
+                data.setCenterX(ellipse.getCenterX());
+                data.setCenterY(ellipse.getCenterY());
+                data.setRadiusX(ellipse.getRadiusX());
+                data.setRadiusY(ellipse.getRadiusY());
+                data.setStrokeColor(ellipse.getStroke().toString());
+                data.setStrokeWidth(ellipse.getStrokeWidth());
+                data.setFillColor(ellipse.getFill().toString());
                 shapeDataList.add(data);
             } else if (node instanceof Line) {
                 Line line = (Line) node;
@@ -81,13 +76,40 @@ public class FileController {
                 shapeDataList.add(data);
             } else if (node instanceof Path) {
                 Path path = (Path) node;
+                StringBuilder pathData = new StringBuilder();
+
+                for (PathElement element : path.getElements()) {
+                    if (element instanceof MoveTo) {
+                        MoveTo moveTo = (MoveTo) element;
+                        pathData.append(String.format(Locale.US, "M %.2f %.2f ", moveTo.getX(), moveTo.getY()));
+                    } else if (element instanceof LineTo) {
+                        LineTo lineTo = (LineTo) element;
+                        pathData.append(String.format(Locale.US, "L %.2f %.2f ", lineTo.getX(), lineTo.getY()));
+                    } else if (element instanceof CubicCurveTo) {
+                        CubicCurveTo cubic = (CubicCurveTo) element;
+                        pathData.append(String.format(Locale.US, "C %.2f %.2f, %.2f %.2f, %.2f %.2f ",
+                                cubic.getControlX1(), cubic.getControlY1(),
+                                cubic.getControlX2(), cubic.getControlY2(),
+                                cubic.getX(), cubic.getY()));
+                    } else if (element instanceof QuadCurveTo) {
+                        QuadCurveTo quad = (QuadCurveTo) element;
+                        pathData.append(String.format(Locale.US, "Q %.2f %.2f, %.2f %.2f ",
+                                quad.getControlX(), quad.getControlY(),
+                                quad.getX(), quad.getY()));
+                    } else if (element instanceof ClosePath) {
+                        pathData.append("Z ");
+                    }
+                }
+
                 ShapeData data = new ShapeData();
                 data.setType("path");
-                data.setPathData(path.getElements().toString());
+                data.setPathData(pathData.toString().trim());
                 data.setStrokeColor(path.getStroke().toString());
                 data.setStrokeWidth(path.getStrokeWidth());
                 data.setFillColor(path.getFill().toString());
                 shapeDataList.add(data);
+            } else if (node instanceof Circle) {
+                continue;
             }
         }
         Gson gson = new Gson();
@@ -103,6 +125,7 @@ public class FileController {
             List<ShapeData> shapeDataList = gson.fromJson(reader, listType);
             drawController.getContentGroup().getChildren().clear();
             for (ShapeData data : shapeDataList) {
+                System.out.println(data.getType());
                 switch (data.getType()) {
                     case "rectangle":
                         Rectangle rectangle = new Rectangle(data.getX(), data.getY(), data.getWidth(), data.getHeight());
@@ -112,13 +135,13 @@ public class FileController {
                         drawController.getContentGroup().getChildren().add(rectangle);
                         drawController.enableResizing(rectangle);
                         break;
-                    case "circle":
-                        Circle circle = new Circle(data.getCenterX(), data.getCenterY(), data.getRadius());
-                        circle.setStroke(Color.web(data.getStrokeColor()));
-                        circle.setStrokeWidth(data.getStrokeWidth());
-                        circle.setFill(Color.web(data.getFillColor()));
-                        drawController.getContentGroup().getChildren().add(circle);
-                        drawController.enableResizing(circle);
+                    case "ellipse":
+                        Ellipse ellipse = new Ellipse(data.getCenterX(), data.getCenterY(), data.getRadiusX(), data.getRadiusY());
+                        ellipse.setStroke(Color.web(data.getStrokeColor()));
+                        ellipse.setStrokeWidth(data.getStrokeWidth());
+                        ellipse.setFill(Color.web(data.getFillColor()));
+                        drawController.getContentGroup().getChildren().add(ellipse);
+                        drawController.enableResizing(ellipse);
                         break;
                     case "line":
                         Line line = new Line(data.getX(), data.getY(), data.getWidth(), data.getHeight());
@@ -129,7 +152,7 @@ public class FileController {
                         break;
                     case "path":
                         Path path = new Path();
-                        path.getElements().addAll(PathElementParser.parse(data.getPathData()));
+                        path.getElements().addAll(PathElementParser.parseSvgPathData(data.getPathData()));
                         path.setStroke(Color.web(data.getStrokeColor()));
                         path.setStrokeWidth(data.getStrokeWidth());
                         path.setFill(Color.web(data.getFillColor()));
@@ -149,6 +172,9 @@ public class FileController {
         for (javafx.scene.Node node : drawController.getContentGroup().getChildren()) {
             if (node instanceof Rectangle) {
                 Rectangle rect = (Rectangle) node;
+                String fillColor = rect.getFill() == null || rect.getFill().equals(Color.TRANSPARENT)
+                        ? "transparent"
+                        : toHexString((Color) rect.getFill());
                 svgContent.append(String.format(Locale.US,
                         "<rect x=\"%.2f\" y=\"%.2f\" width=\"%.2f\" height=\"%.2f\" stroke=\"%s\" stroke-width=\"%.2f\" fill=\"%s\" />\n",
                         rect.getX(),
@@ -157,21 +183,22 @@ public class FileController {
                         rect.getHeight(),
                         toHexString((Color) rect.getStroke()),
                         rect.getStrokeWidth(),
-                        toHexString((Color) rect.getFill())
+                        fillColor
                 ));
-            } else if (node instanceof Circle) {
-                Circle circle = (Circle) node;
-                if ("draggable-handle".equals(circle.getId())) {
-                    continue; // Пропустить
-                }
+            } else if (node instanceof Ellipse) {
+                Ellipse ellipse = (Ellipse) node;
+                String fillColor = ellipse.getFill() == null || ellipse.getFill().equals(Color.TRANSPARENT)
+                        ? "transparent"
+                        : toHexString((Color) ellipse.getFill());
                 svgContent.append(String.format(Locale.US,
-                        "<circle cx=\"%.2f\" cy=\"%.2f\" r=\"%.2f\" stroke=\"%s\" stroke-width=\"%.2f\" fill=\"%s\" />\n",
-                        circle.getCenterX(),
-                        circle.getCenterY(),
-                        circle.getRadius(),
-                        toHexString((Color) circle.getStroke()),
-                        circle.getStrokeWidth(),
-                        toHexString((Color) circle.getFill())
+                        "<ellipse cx=\"%.2f\" cy=\"%.2f\" rx=\"%.2f\" ry=\"%.2f\" stroke=\"%s\" stroke-width=\"%.2f\" fill=\"%s\" />\n",
+                        ellipse.getCenterX(),
+                        ellipse.getCenterY(),
+                        ellipse.getRadiusX(),
+                        ellipse.getRadiusY(),
+                        toHexString((Color) ellipse.getStroke()),
+                        ellipse.getStrokeWidth(),
+                        fillColor
                 ));
             } else if (node instanceof Line) {
                 Line line = (Line) node;
@@ -186,12 +213,40 @@ public class FileController {
                 ));
             } else if (node instanceof Path) {
                 Path path = (Path) node;
+                String fillColor = path.getFill() == null || path.getFill().equals(Color.TRANSPARENT)
+                        ? "transparent"
+                        : toHexString((Color) path.getFill());
+                StringBuilder pathData = new StringBuilder();
+
+                for (PathElement element : path.getElements()) {
+                    if (element instanceof MoveTo) {
+                        MoveTo moveTo = (MoveTo) element;
+                        pathData.append(String.format(Locale.US, "M %.2f %.2f ", moveTo.getX(), moveTo.getY()));
+                    } else if (element instanceof LineTo) {
+                        LineTo lineTo = (LineTo) element;
+                        pathData.append(String.format(Locale.US, "L %.2f %.2f ", lineTo.getX(), lineTo.getY()));
+                    } else if (element instanceof CubicCurveTo) {
+                        CubicCurveTo cubic = (CubicCurveTo) element;
+                        pathData.append(String.format(Locale.US, "C %.2f %.2f, %.2f %.2f, %.2f %.2f ",
+                                cubic.getControlX1(), cubic.getControlY1(),
+                                cubic.getControlX2(), cubic.getControlY2(),
+                                cubic.getX(), cubic.getY()));
+                    } else if (element instanceof QuadCurveTo) {
+                        QuadCurveTo quad = (QuadCurveTo) element;
+                        pathData.append(String.format(Locale.US, "Q %.2f %.2f, %.2f %.2f ",
+                                quad.getControlX(), quad.getControlY(),
+                                quad.getX(), quad.getY()));
+                    } else if (element instanceof ClosePath) {
+                        pathData.append("Z ");
+                    }
+                }
+
                 svgContent.append(String.format(Locale.US,
                         "<path d=\"%s\" stroke=\"%s\" stroke-width=\"%.2f\" fill=\"%s\" />\n",
-                        path.getElements().toString(),
+                        pathData.toString().trim(),
                         toHexString((Color) path.getStroke()),
                         path.getStrokeWidth(),
-                        toHexString((Color) path.getFill())
+                        fillColor
                 ));
             }
         }
@@ -229,6 +284,19 @@ public class FileController {
         if (node.getNodeType() == Node.ELEMENT_NODE) {
             Element element = (Element) node;
 
+            Color fillColor = null;
+            if ((Objects.equals(element.getTagName(), "rect")) || (Objects.equals(element.getTagName(), "circle")) || (Objects.equals(element.getTagName(), "path"))) {
+                String fillAttribute = element.getAttribute("fill");
+                fillColor = "none".equals(fillAttribute) ? Color.TRANSPARENT : Color.web(fillAttribute);
+            }
+
+            String strokeAttribute = element.getAttribute("stroke");
+            Color strokeColor = strokeAttribute == null || strokeAttribute.isEmpty() || "none".equals(strokeAttribute)
+                    ? null
+                    : Color.web(strokeAttribute);
+
+            double strokeWidth = Double.parseDouble(element.getAttribute("stroke-width"));
+
             switch (element.getTagName()) {
                 case "rect":
                     Rectangle rect = new Rectangle(
@@ -237,24 +305,25 @@ public class FileController {
                             parseDouble(element.getAttribute("width")),
                             parseDouble(element.getAttribute("height"))
                     );
-                    rect.setStroke(Color.web(element.getAttribute("stroke")));
-                    rect.setStrokeWidth(parseDouble(element.getAttribute("stroke-width")));
-                    rect.setFill(Color.web(element.getAttribute("fill"))); // Устанавливаем заливку
+                    rect.setStroke(strokeColor);
+                    rect.setStrokeWidth(strokeWidth);
+                    rect.setFill(fillColor); // Устанавливаем заливку
                     drawController.getContentGroup().getChildren().add(rect);
                     drawController.enableResizing(rect);
                     break;
 
-                case "circle":
-                    Circle circle = new Circle(
+                case "ellipse":
+                    Ellipse ellipse = new Ellipse(
                             parseDouble(element.getAttribute("cx")),
                             parseDouble(element.getAttribute("cy")),
-                            parseDouble(element.getAttribute("r"))
+                            parseDouble(element.getAttribute("rx")),
+                            parseDouble(element.getAttribute("ry"))
                     );
-                    circle.setStroke(Color.web(element.getAttribute("stroke")));
-                    circle.setStrokeWidth(parseDouble(element.getAttribute("stroke-width")));
-                    circle.setFill(Color.web(element.getAttribute("fill"))); // Устанавливаем заливку
-                    drawController.getContentGroup().getChildren().add(circle);
-                    drawController.enableResizing(circle);
+                    ellipse.setStroke(strokeColor);
+                    ellipse.setStrokeWidth(strokeWidth);
+                    ellipse.setFill(fillColor);
+                    drawController.getContentGroup().getChildren().add(ellipse);
+                    drawController.enableResizing(ellipse);
                     break;
 
                 case "line":
@@ -264,18 +333,19 @@ public class FileController {
                             parseDouble(element.getAttribute("x2")),
                             parseDouble(element.getAttribute("y2"))
                     );
-                    line.setStroke(Color.web(element.getAttribute("stroke")));
-                    line.setStrokeWidth(parseDouble(element.getAttribute("stroke-width")));
+                    line.setStroke(strokeColor);
+                    line.setStrokeWidth(strokeWidth);
                     drawController.getContentGroup().getChildren().add(line);
                     drawController.enableResizing(line);
                     break;
 
                 case "path":
                     String pathData = element.getAttribute("d");
-                    javafx.scene.shape.Path path = PathParser.parseSvgPath(pathData);
-                    path.setStroke(Color.web(element.getAttribute("stroke")));
-                    path.setStrokeWidth(parseDouble(element.getAttribute("stroke-width")));
-                    path.setFill(Color.web(element.getAttribute("fill")));
+                    Path path = new Path();
+                    path.getElements().addAll(PathElementParser.parseSvgPathData(pathData));
+                    path.setStroke(strokeColor);
+                    path.setStrokeWidth(strokeWidth);
+                    path.setFill(fillColor);
                     drawController.getContentGroup().getChildren().add(path);
                     drawController.enableResizing(path);
                     break;

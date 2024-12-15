@@ -34,7 +34,7 @@
         <VBox spacing="10" style="-fx-padding: 10;">
             <Button fx:id="selectToolButton" text="Select" />
             <Button fx:id="rectangleToolButton" text="Rectangle" />
-            <Button fx:id="circleToolButton" text="Circle" />
+            <Button fx:id="ellipseToolButton" text="Ellipse" />
             <Button fx:id="lineToolButton" text="Line" />
             <Button fx:id="curveToolButton" text="Curve" />
         </VBox>
@@ -66,9 +66,12 @@
             </HBox>
 
             <!-- Выбор через графический интерфейс -->
-            <Label text="Цветовая палитра" />
+            <Label text="Color Picker" />
             <ColorPicker fx:id="colorPicker" />
             <ColorPicker fx:id="fillColorPicker" />
+            <Label text="Stroke Width" style="-fx-font-weight: bold;" />
+            <Slider fx:id="strokeWidthSlider" min="1" max="10" value="2" blockIncrement="1" />
+            <Label fx:id="strokeWidthValueLabel" text="2.0" style="-fx-alignment: center;" />
         </VBox>
     </right>
 

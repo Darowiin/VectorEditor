@@ -14,7 +14,6 @@ import org.example.enums.ToolMode;
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
-import java.util.List;
 import java.util.Optional;
 
 public class MainController {
@@ -32,7 +31,7 @@ public class MainController {
 
     @FXML private Button selectToolButton;
     @FXML private Button rectangleToolButton;
-    @FXML private Button circleToolButton;
+    @FXML private Button ellipseToolButton;
     @FXML private Button lineToolButton;
     @FXML private Button curveToolButton;
     @FXML private Button colorBlack;
@@ -42,6 +41,8 @@ public class MainController {
     @FXML private Button colorYellow;
     @FXML private ColorPicker colorPicker;
     @FXML private ColorPicker fillColorPicker;
+    @FXML private Slider strokeWidthSlider;
+    @FXML private Label strokeWidthValueLabel;
 
     @FXML private ScrollPane drawingScrollPane;
 
@@ -110,8 +111,8 @@ public class MainController {
             toolController.setCurrentTool(ToolMode.RECTANGLE);
             statusBar.setText("Tool: Rectangle");
         });
-        circleToolButton.setOnAction(event -> {
-            toolController.setCurrentTool(ToolMode.CIRCLE);
+        ellipseToolButton.setOnAction(event -> {
+            toolController.setCurrentTool(ToolMode.ELLIPSE);
             statusBar.setText("Tool: Circle");
         });
         lineToolButton.setOnAction(event -> {
@@ -174,6 +175,14 @@ public class MainController {
                         handleSaveFile();
                         statusBar.setText("File saved using Ctrl+S.");
                         event.consume();
+                    } else if (event.isControlDown() && event.getCode().toString().equals("O")) {
+                        handleOpenFile();
+                        statusBar.setText("File opened using Ctrl+O.");
+                        event.consume();
+                    } else if (event.isControlDown() && event.getCode().toString().equals("N")) {
+                        handleNewFile();
+                        statusBar.setText("New file created using Ctrl+N.");
+                        event.consume();
                     }
                 });
             }
@@ -228,6 +237,15 @@ public class MainController {
             }
         });
 
+        strokeWidthSlider.valueProperty().addListener((observable, oldValue, newValue) -> {
+            double strokeWidth = newValue.doubleValue();
+            strokeWidthValueLabel.setText(String.format("%.1f", strokeWidth));
+
+            // Применить ширину к текущему инструменту или выделенной фигуре
+            drawController.setStrokeWidth(strokeWidth);
+            statusBar.setText("Stroke width: " + strokeWidth);
+        });
+
         aboutMenuItem.setOnAction(event -> statusBar.setText("About: Vectorium v1.0"));
     }
 
@@ -251,94 +269,80 @@ public class MainController {
                     handleSaveFile();
                 } else if (result.get() == discardButton) {
                     drawController.clearCanvas();
+                    drawController.resetModificationStatus();
                     statusBar.setText("New file created.");
                 }
             }
         } else {
             drawController.clearCanvas();
+            drawController.resetModificationStatus();
             statusBar.setText("New file created.");
         }
 
     }
 
     private void handleOpenFile() {
-        List<String> choices = List.of("JSON", "SVG");
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Open File");
 
-        ChoiceDialog<String> dialog = new ChoiceDialog<>("JSON", choices);
-        dialog.setTitle("Open File");
-        dialog.setHeaderText("Choose a file format");
-        dialog.setContentText("Format:");
+        // Добавление фильтров для выбора расширений
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("JSON Files", "*.json"),
+                new FileChooser.ExtensionFilter("SVG Files", "*.svg"),
+                new FileChooser.ExtensionFilter("All Files", "*.*")
+        );
 
-        dialog.showAndWait().ifPresent(format -> {
-            FileChooser fileChooser = new FileChooser();
-            fileChooser.setTitle("Open File");
-
-            switch (format) {
-                case "JSON":
-                    fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
-                    break;
-                case "SVG":
-                    fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("SVG Files", "*.svg"));
-                    break;
-            }
-
-            File file = fileChooser.showOpenDialog(drawingArea.getScene().getWindow());
-            if (file != null) {
-                try {
-                    if ("JSON".equals(format)) {
-                        fileController.loadFromJSON(file);
-                    } else if ("SVG".equals(format)) {
-                        fileController.loadFromSvg(file);
-                    }
-                    drawController.resetModificationStatus();
-                    statusBar.setText("File loaded: " + file.getName() + " as " + format);
-                } catch (IOException | ParseException e) {
-                    statusBar.setText("Failed to load file: " + e.getMessage());
+        // Показ диалогового окна выбора файла
+        File file = fileChooser.showOpenDialog(drawingArea.getScene().getWindow());
+        if (file != null) {
+            try {
+                String fileName = file.getName().toLowerCase();
+                if (fileName.endsWith(".json")) {
+                    fileController.loadFromJSON(file);
+                } else if (fileName.endsWith(".svg")) {
+                    fileController.loadFromSvg(file);
+                } else {
+                    throw new IllegalArgumentException("Unsupported file format: " + file.getName());
                 }
+                drawController.resetModificationStatus();
+                statusBar.setText("File loaded: " + file.getName());
+            } catch (IOException | ParseException | IllegalArgumentException e) {
+                statusBar.setText("Failed to load file: " + e.getMessage());
             }
-        });
+        }
     }
 
     private void handleSaveFile() {
-        List<String> choices = List.of("JSON", "SVG", "PNG");
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Save File");
 
-        ChoiceDialog<String> dialog = new ChoiceDialog<>("JSON", choices);
-        dialog.setTitle("Save File");
-        dialog.setHeaderText("Choose a file format");
-        dialog.setContentText("Format:");
+        // Добавление фильтров для выбора расширений
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("JSON Files", "*.json"),
+                new FileChooser.ExtensionFilter("SVG Files", "*.svg"),
+                new FileChooser.ExtensionFilter("PNG Files", "*.png")
+        );
 
-        dialog.showAndWait().ifPresent(format -> {
-            FileChooser fileChooser = new FileChooser();
-            fileChooser.setTitle("Save File");
-            switch (format) {
-                case "JSON":
-                    fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("JSON Files", "*.json"));
-                    break;
-                case "SVG":
-                    fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("SVG Files", "*.svg"));
-                    break;
-                case "PNG":
-                    fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PNG Files", "*.png"));
-                    break;
-            }
-
-            File file = fileChooser.showSaveDialog(drawingArea.getScene().getWindow());
-            if (file != null) {
-                try {
-                    if ("JSON".equals(format)) {
-                        fileController.saveToJSON(file);
-                    } else if ("SVG".equals(format)) {
-                        fileController.saveToSvg(file);
-                    } else if ("PNG".equals(format)) {
-                        fileController.saveToPNG(file);
-                    }
-                    drawController.resetModificationStatus();
-                    statusBar.setText("File saved: " + file.getName() + " as " + format);
-                } catch (IOException e) {
-                    statusBar.setText("Failed to save file: " + e.getMessage());
+        // Показ диалогового окна сохранения файла
+        File file = fileChooser.showSaveDialog(drawingArea.getScene().getWindow());
+        if (file != null) {
+            try {
+                String fileName = file.getName().toLowerCase();
+                if (fileName.endsWith(".json")) {
+                    fileController.saveToJSON(file);
+                } else if (fileName.endsWith(".svg")) {
+                    fileController.saveToSvg(file);
+                } else if (fileName.endsWith(".png")) {
+                    fileController.saveToPNG(file);
+                } else {
+                    throw new IllegalArgumentException("Unsupported file format: " + file.getName());
                 }
+                drawController.resetModificationStatus();
+                statusBar.setText("File saved: " + file.getName());
+            } catch (IOException | IllegalArgumentException e) {
+                statusBar.setText("Failed to save file: " + e.getMessage());
             }
-        });
+        }
     }
 
     @FXML

@@ -8,10 +8,12 @@ public class ShapeData {
     private double height;
     private double centerX;
     private double centerY;
-    private double radius;
+    private double radiusX;
+    private double radiusY;
     private String strokeColor;
     private String fillColor;
     private double strokeWidth;
+    private String pathData;
 
     // Геттеры и сеттеры
     public String getType() {
@@ -56,11 +58,17 @@ public class ShapeData {
     public void setCenterY(double centerY) {
         this.centerY = centerY;
     }
-    public double getRadius() {
-        return radius;
+    public double getRadiusX() {
+        return radiusX;
     }
-    public void setRadius(double radius) {
-        this.radius = radius;
+    public void setRadiusX(double radiusX) {
+        this.radiusX = radiusX;
+    }
+    public double getRadiusY() {
+        return radiusY;
+    }
+    public void setRadiusY(double radiusY) {
+        this.radiusY = radiusY;
     }
     public String getStrokeColor() {
         return strokeColor;
@@ -76,4 +84,6 @@ public class ShapeData {
     public void setStrokeWidth(double strokeWidth) {
         this.strokeWidth = strokeWidth;
     }
+    public String getPathData() { return pathData; }
+    public void setPathData(String pathData) { this.pathData = pathData; }
 }

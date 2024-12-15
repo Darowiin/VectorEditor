@@ -18,12 +18,13 @@ public class DrawController {
     private ColorController colorController;
 
     private Rectangle currentRectangle;
-    private Circle currentCircle;
+    private Ellipse currentEllipse;
     private Line currentLine;
     private Path currentCurve;
 
     private double startX, startY;
     private static boolean isModified = false;
+    private double currentStrokeWidth = 2.0;
 
     public void initialize(Pane drawingArea, ToolController toolController, ColorController colorController) {
         this.drawingArea = drawingArea;
@@ -53,28 +54,28 @@ public class DrawController {
             currentRectangle = new Rectangle(startX, startY, 0, 0);
             currentRectangle.setFill(currentColorFill);
             currentRectangle.setStroke(currentColor);
-            currentRectangle.setStrokeWidth(2);
+            currentRectangle.setStrokeWidth(currentStrokeWidth);
             contentGroup.getChildren().add(currentRectangle);
             markAsModified();
-        } else if (currentTool == ToolMode.CIRCLE) {
-            currentCircle = new Circle(startX, startY, 0);
-            currentCircle.setFill(currentColorFill);
-            currentCircle.setStroke(currentColor);
-            currentCircle.setStrokeWidth(2);
-            contentGroup.getChildren().add(currentCircle);
+        } else if (currentTool == ToolMode.ELLIPSE) {
+            currentEllipse = new Ellipse(startX, startY, 0, 0);
+            currentEllipse.setFill(currentColorFill);
+            currentEllipse.setStroke(currentColor);
+            currentEllipse.setStrokeWidth(currentStrokeWidth);
+            contentGroup.getChildren().add(currentEllipse);
             markAsModified();
         } else if (currentTool == ToolMode.LINE) {
             currentLine = new Line(startX, startY, startX, startY);
             currentLine.setStroke(currentColor);
-            currentLine.setStrokeWidth(2);
+            currentLine.setStrokeWidth(currentStrokeWidth);
             contentGroup.getChildren().add(currentLine);
             markAsModified();
         }
         if (currentTool == ToolMode.CURVE) {
             currentCurve = new Path();
             currentCurve.setStroke(currentColor);
-            currentCurve.setStrokeWidth(2);
-            currentCurve.setFill(null);
+            currentCurve.setStrokeWidth(currentStrokeWidth);
+            currentCurve.setFill(currentColorFill);
 
             MoveTo moveTo = new MoveTo(startX, startY);
             currentCurve.getElements().add(moveTo);
@@ -96,16 +97,22 @@ public class DrawController {
             if (localX < startX) currentRectangle.setX(localX);
             if (localY < startY) currentRectangle.setY(localY);
             markAsModified();
-        } else if (currentCircle != null) {
-            double radius = Math.sqrt(Math.pow(localX - startX, 2) + Math.pow(localY - startY, 2));
-            currentCircle.setRadius(radius);
+        } else if (currentEllipse != null) {
+            double width = Math.abs(localX - startX);
+            double height = Math.abs(localY - startY);
+
+            currentEllipse.setRadiusX(width);
+            currentEllipse.setRadiusY(height);
+
+            if (localX < startX) currentEllipse.setCenterX(localX);
+            if (localY < startY) currentEllipse.setCenterY(localY);
+
             markAsModified();
         } else if (currentLine != null) {
             currentLine.setEndX(localX);
             currentLine.setEndY(localY);
             markAsModified();
-        }
-        if (currentCurve != null) {
+        } else if (currentCurve != null) {
             PathElement lastElement = currentCurve.getElements().get(currentCurve.getElements().size() - 1);
 
             if (lastElement instanceof QuadCurveTo) {
@@ -124,9 +131,9 @@ public class DrawController {
         if (currentRectangle != null) {
             enableResizing(currentRectangle);
             currentRectangle = null;
-        } else if (currentCircle != null) {
-            enableResizing(currentCircle);
-            currentCircle = null;
+        } else if (currentEllipse != null) {
+            enableResizing(currentEllipse);
+            currentEllipse = null;
         } else if (currentLine != null) {
             enableResizing(currentLine);
             currentLine = null;
@@ -140,8 +147,8 @@ public class DrawController {
     protected void enableResizing(javafx.scene.shape.Shape shape) {
         if (shape instanceof Line) {
             enableLineResizing((Line) shape);
-        } else if (shape instanceof Circle) {
-            enableCircleResizing((Circle) shape);
+        } else if (shape instanceof Ellipse) {
+            enableEllipseResizing((Ellipse) shape);
         } else if (shape instanceof Rectangle) {
             enableRectangleResizing((Rectangle) shape);
         } else if (shape instanceof Path) {
@@ -152,19 +159,31 @@ public class DrawController {
     private void enableCurveResizing(Path shape) {
         for (PathElement element : shape.getElements()) {
             if (element instanceof MoveTo moveTo) {
-                javafx.scene.shape.Circle moveHandle = createHandle(moveTo.getX(), moveTo.getY());
+                javafx.scene.shape.Circle startHandle = createHandle(moveTo.getX(), moveTo.getY());
 
-                moveHandle.setOnMouseDragged(e -> {
+                toggleHandlesVisibility(true, startHandle);
+
+                startHandle.setOnMouseDragged(e -> {
                     moveTo.setX(e.getX());
                     moveTo.setY(e.getY());
-                    moveHandle.setCenterX(e.getX());
-                    moveHandle.setCenterY(e.getY());
+                    startHandle.setCenterX(e.getX());
+                    startHandle.setCenterY(e.getY());
+                    System.out.println("StartHandle moved");
                 });
 
-                contentGroup.getChildren().add(moveHandle);
+                shape.setOnMouseClicked(e -> {
+                    boolean visible = !startHandle.isVisible();
+                    toggleHandlesVisibility(visible, startHandle);
+                });
+
+
+                contentGroup.getChildren().add(startHandle);
+
             } else if (element instanceof QuadCurveTo quadCurveTo) {
                 javafx.scene.shape.Circle controlHandle = createHandle(quadCurveTo.getControlX(), quadCurveTo.getControlY());
                 javafx.scene.shape.Circle endHandle = createHandle(quadCurveTo.getX(), quadCurveTo.getY());
+
+                toggleHandlesVisibility(false, controlHandle, endHandle);
 
                 controlHandle.setOnMouseDragged(e -> {
                     quadCurveTo.setControlX(e.getX());
@@ -180,15 +199,27 @@ public class DrawController {
                     endHandle.setCenterY(e.getY());
                 });
 
+                shape.setOnMouseClicked(e -> {
+                    boolean visible = !controlHandle.isVisible();
+                    toggleHandlesVisibility(visible, controlHandle, endHandle);
+                });
+
                 contentGroup.getChildren().addAll(controlHandle, endHandle);
             } else if (element instanceof LineTo lineTo) {
                 javafx.scene.shape.Circle endHandle = createHandle(lineTo.getX(), lineTo.getY());
+
+                toggleHandlesVisibility(false, endHandle);
 
                 endHandle.setOnMouseDragged(e -> {
                     lineTo.setX(e.getX());
                     lineTo.setY(e.getY());
                     endHandle.setCenterX(e.getX());
                     endHandle.setCenterY(e.getY());
+                });
+
+                shape.setOnMouseClicked(e -> {
+                    boolean visible = !endHandle.isVisible();
+                    toggleHandlesVisibility(visible, endHandle);
                 });
 
                 contentGroup.getChildren().add(endHandle);
@@ -224,24 +255,29 @@ public class DrawController {
         contentGroup.getChildren().addAll(startHandle, endHandle);
     }
 
-    private void enableCircleResizing(Circle circle) {
-        javafx.scene.shape.Circle radiusHandle = createHandle(circle.getCenterX() + circle.getRadius(), circle.getCenterY());
+    private void enableEllipseResizing(Ellipse ellipse) {
+        javafx.scene.shape.Circle widthHandle = createHandle(ellipse.getCenterX() + ellipse.getRadiusX(), ellipse.getCenterY()); // Для ширины
+        javafx.scene.shape.Circle heightHandle = createHandle(ellipse.getCenterX(), ellipse.getCenterY() + ellipse.getRadiusY()); // Для высоты
 
+        toggleHandlesVisibility(false, widthHandle, heightHandle);
 
-        toggleHandlesVisibility(false, radiusHandle);
-
-        circle.setOnMouseClicked(e -> {
-            boolean visible = !radiusHandle.isVisible();
-            toggleHandlesVisibility(visible, radiusHandle);
+        ellipse.setOnMouseClicked(e -> {
+            boolean visible = !widthHandle.isVisible();
+            toggleHandlesVisibility(visible, widthHandle, heightHandle);
         });
 
-        radiusHandle.setOnMouseDragged(e -> {
-            double newRadius = Math.sqrt(Math.pow(e.getX() - circle.getCenterX(), 2) + Math.pow(e.getY() - circle.getCenterY(), 2));
-            circle.setRadius(newRadius);
-            radiusHandle.setCenterX(circle.getCenterX() + circle.getRadius());
+        widthHandle.setOnMouseDragged(e -> {
+            double newRadiusX = Math.abs(e.getX() - ellipse.getCenterX());
+            ellipse.setRadiusX(newRadiusX);
+            widthHandle.setCenterX(ellipse.getCenterX() + newRadiusX);
         });
 
-        contentGroup.getChildren().add(radiusHandle);
+        heightHandle.setOnMouseDragged(e -> {
+            double newRadiusY = Math.abs(e.getY() - ellipse.getCenterY());
+            ellipse.setRadiusY(newRadiusY);
+            heightHandle.setCenterY(ellipse.getCenterY() + newRadiusY);
+        });
+        contentGroup.getChildren().addAll(widthHandle, heightHandle);
     }
 
     private void enableRectangleResizing(Rectangle rectangle) {
@@ -266,12 +302,6 @@ public class DrawController {
                 rectangle.setY(e.getY());
                 rectangle.setWidth(newWidth);
                 rectangle.setHeight(newHeight);
-            } else if (newWidth <= 0) {
-                rectangle.setX(rectangle.getX() + rectangle.getWidth());
-                rectangle.setWidth(-newWidth);
-            } else if (newHeight <= 0) {
-                rectangle.setY(rectangle.getY() + rectangle.getHeight());
-                rectangle.setHeight(-newHeight);
             }
 
             updateRectangleHandles(rectangle, topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
@@ -285,12 +315,6 @@ public class DrawController {
                 rectangle.setY(e.getY());
                 rectangle.setWidth(newWidth);
                 rectangle.setHeight(newHeight);
-            } else if (newWidth <= 0) {
-                rectangle.setX(e.getX());
-                rectangle.setWidth(-newWidth);
-            } else if (newHeight <= 0) {
-                rectangle.setY(rectangle.getY() + rectangle.getHeight());
-                rectangle.setHeight(-newHeight);
             }
 
             updateRectangleHandles(rectangle, topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
@@ -304,12 +328,6 @@ public class DrawController {
                 rectangle.setX(e.getX());
                 rectangle.setWidth(newWidth);
                 rectangle.setHeight(newHeight);
-            } else if (newWidth <= 0) {
-                rectangle.setX(rectangle.getX() + rectangle.getWidth());
-                rectangle.setWidth(-newWidth);
-            } else if (newHeight <= 0) {
-                rectangle.setY(e.getY());
-                rectangle.setHeight(-newHeight);
             }
 
             updateRectangleHandles(rectangle, topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
@@ -322,12 +340,6 @@ public class DrawController {
             if (newWidth > 0 && newHeight > 0) {
                 rectangle.setWidth(newWidth);
                 rectangle.setHeight(newHeight);
-            } else if (newWidth <= 0) {
-                rectangle.setX(e.getX());
-                rectangle.setWidth(-newWidth);
-            } else if (newHeight <= 0) {
-                rectangle.setY(e.getY());
-                rectangle.setHeight(-newHeight);
             }
 
             updateRectangleHandles(rectangle, topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
@@ -337,7 +349,7 @@ public class DrawController {
     }
 
     private javafx.scene.shape.Circle createHandle(double x, double y) {
-        javafx.scene.shape.Circle handle = new javafx.scene.shape.Circle(x, y, 5);
+        javafx.scene.shape.Circle handle = new javafx.scene.shape.Circle(x, y, 1.5*currentStrokeWidth);
         handle.setFill(Color.RED);
         handle.setStroke(Color.BLACK);
         handle.setStrokeWidth(1);
@@ -386,5 +398,9 @@ public class DrawController {
     }
     public static boolean isModified() {
         return isModified;
+    }
+
+    public void setStrokeWidth(double strokeWidth) {
+        this.currentStrokeWidth = strokeWidth;
     }
 }
