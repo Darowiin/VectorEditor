@@ -2,10 +2,13 @@ package org.example.controllers;
 
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.Shape;
 import javafx.stage.FileChooser;
 
 import javafx.stage.WindowEvent;
@@ -43,6 +46,7 @@ public class MainController {
     @FXML private ColorPicker fillColorPicker;
     @FXML private Slider strokeWidthSlider;
     @FXML private Label strokeWidthValueLabel;
+    @FXML private Button eyedropperToolButton;
 
     @FXML private ScrollPane drawingScrollPane;
 
@@ -59,6 +63,7 @@ public class MainController {
     private static final double ZOOM_STEP = 0.1; // Шаг изменения масштаба
     private static final double MAX_SCALE = 5.0; // Максимальный масштаб
     private static final double MIN_SCALE = 1.0; // Минимальный масштаб
+    private boolean isEyedropperActive = false;
 
     private final EventHandler<WindowEvent> closeEventHandler = event -> {
         if (DrawController.isModified()) {
@@ -246,6 +251,10 @@ public class MainController {
             statusBar.setText("Stroke width: " + strokeWidth);
         });
 
+        eyedropperToolButton.setOnAction(event -> {
+            activateEyedropperTool();
+
+        });
         aboutMenuItem.setOnAction(event -> statusBar.setText("About: Vectorium v1.0"));
     }
 
@@ -376,6 +385,54 @@ public class MainController {
     private void applyZoom() {
         drawController.getContentGroup().setScaleX(scaleFactor);
         drawController.getContentGroup().setScaleY(scaleFactor);
+    }
+
+    private void activateEyedropperTool() {
+        isEyedropperActive = true;
+        statusBar.setText("Tool: Eyedropper");
+        ToolMode tmp = toolController.getCurrentTool();
+        toolController.setCurrentTool(ToolMode.EYEDROPPER);
+
+        drawController.deactivateDrawingHandlers();
+
+        drawingArea.setOnMousePressed(mouseEvent -> {
+            Node pickedNode = mouseEvent.getPickResult().getIntersectedNode();
+            if (pickedNode instanceof Shape) {
+                Shape shape = (Shape) pickedNode;
+
+                if (mouseEvent.isPrimaryButtonDown()) {
+                    // ЛКМ: выбираем цвет обводки
+                    Color strokeColor = (Color) shape.getStroke();
+                    if (strokeColor != null) {
+                        colorPicker.setValue(strokeColor);
+                        colorController.setCurrentColor(colorPicker.getValue());
+                        statusBar.setText("Stroke color picked: " + colorToHex(strokeColor));
+                    }
+                } else if (mouseEvent.isSecondaryButtonDown()) {
+                    // ПКМ: выбираем цвет заливки
+                    Paint fillPaint = shape.getFill();
+                    if (fillPaint instanceof Color fillColor) {
+                        fillColorPicker.setValue(fillColor);
+                        colorController.setFillColor(fillColor);
+                        statusBar.setText("Fill color picked: " + colorToHex(fillColor));
+                    }
+                }
+            }
+            deactivateEyedropperTool(tmp);
+        });
+    }
+
+    private void deactivateEyedropperTool(ToolMode tmp) {
+        isEyedropperActive = false;
+        toolController.setCurrentTool(tmp);
+        drawController.activateDrawingHandlers();
+    }
+
+    private String colorToHex(Color color) {
+        return String.format("#%02X%02X%02X",
+                (int) (color.getRed() * 255),
+                (int) (color.getGreen() * 255),
+                (int) (color.getBlue() * 255));
     }
 
 }

@@ -5,5 +5,6 @@ public enum ToolMode {
     RECTANGLE,
     ELLIPSE,
     LINE,
-    CURVE
+    CURVE,
+    EYEDROPPER
 }

@@ -1,10 +1,9 @@
 package org.example.controllers;
-
-import javafx.scene.Cursor;
-import javafx.scene.shape.*;
 import org.example.enums.ToolMode;
 
 import javafx.fxml.FXML;
+import javafx.scene.Cursor;
+import javafx.scene.shape.*;
 import javafx.scene.Group;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
@@ -34,9 +33,19 @@ public class DrawController {
         contentGroup = new Group();
         drawingArea.getChildren().add(contentGroup);
 
+        activateDrawingHandlers();
+    }
+
+    public void activateDrawingHandlers() {
         drawingArea.setOnMousePressed(this::handleMousePressed);
         drawingArea.setOnMouseDragged(this::handleMouseDragged);
         drawingArea.setOnMouseReleased(this::handleMouseReleased);
+    }
+
+    public void deactivateDrawingHandlers() {
+        drawingArea.setOnMousePressed(null);
+        drawingArea.setOnMouseDragged(null);
+        drawingArea.setOnMouseReleased(null);
     }
 
     private void handleMousePressed(MouseEvent event) {
@@ -168,12 +177,13 @@ public class DrawController {
                     moveTo.setY(e.getY());
                     startHandle.setCenterX(e.getX());
                     startHandle.setCenterY(e.getY());
-                    System.out.println("StartHandle moved");
                 });
 
                 shape.setOnMouseClicked(e -> {
-                    boolean visible = !startHandle.isVisible();
-                    toggleHandlesVisibility(visible, startHandle);
+                    if (toolController.getCurrentTool() == ToolMode.SELECT) {
+                        boolean visible = !startHandle.isVisible();
+                        toggleHandlesVisibility(visible, startHandle);
+                    }
                 });
 
 
@@ -200,8 +210,10 @@ public class DrawController {
                 });
 
                 shape.setOnMouseClicked(e -> {
-                    boolean visible = !controlHandle.isVisible();
-                    toggleHandlesVisibility(visible, controlHandle, endHandle);
+                    if (toolController.getCurrentTool() == ToolMode.SELECT) {
+                        boolean visible = !controlHandle.isVisible();
+                        toggleHandlesVisibility(visible, controlHandle, endHandle);
+                    }
                 });
 
                 contentGroup.getChildren().addAll(controlHandle, endHandle);
@@ -218,8 +230,10 @@ public class DrawController {
                 });
 
                 shape.setOnMouseClicked(e -> {
-                    boolean visible = !endHandle.isVisible();
-                    toggleHandlesVisibility(visible, endHandle);
+                    if (toolController.getCurrentTool() == ToolMode.SELECT) {
+                        boolean visible = !endHandle.isVisible();
+                        toggleHandlesVisibility(visible, endHandle);
+                    }
                 });
 
                 contentGroup.getChildren().add(endHandle);
@@ -234,8 +248,10 @@ public class DrawController {
         toggleHandlesVisibility(false, startHandle, endHandle);
 
         line.setOnMouseClicked(e -> {
-            boolean visible = !startHandle.isVisible();
-            toggleHandlesVisibility(visible, startHandle, endHandle);
+            if (toolController.getCurrentTool() == ToolMode.SELECT) {
+                boolean visible = !startHandle.isVisible();
+                toggleHandlesVisibility(visible, startHandle, endHandle);
+            }
         });
 
         startHandle.setOnMouseDragged(e -> {
@@ -262,8 +278,10 @@ public class DrawController {
         toggleHandlesVisibility(false, widthHandle, heightHandle);
 
         ellipse.setOnMouseClicked(e -> {
-            boolean visible = !widthHandle.isVisible();
-            toggleHandlesVisibility(visible, widthHandle, heightHandle);
+            if (toolController.getCurrentTool() == ToolMode.SELECT) {
+                boolean visible = !widthHandle.isVisible();
+                toggleHandlesVisibility(visible, widthHandle, heightHandle);
+            }
         });
 
         widthHandle.setOnMouseDragged(e -> {
@@ -289,8 +307,10 @@ public class DrawController {
         toggleHandlesVisibility(false, topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
 
         rectangle.setOnMouseClicked(e -> {
-            boolean visible = !topLeftHandle.isVisible();
-            toggleHandlesVisibility(visible, topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
+            if (toolController.getCurrentTool() == ToolMode.SELECT) {
+                boolean visible = !topLeftHandle.isVisible();
+                toggleHandlesVisibility(visible, topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
+            }
         });
 
         topLeftHandle.setOnMouseDragged(e -> {

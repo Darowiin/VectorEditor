@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'application'
+    id 'edu.sc.seis.launch4j' version '2.3.0'
 }
 
 group = 'org.example'
@@ -41,17 +42,8 @@ test {
     useJUnitPlatform()
 }
 
-tasks.register('jpackage', Exec) {
-    def jdkHome = System.getenv("JAVA_HOME")
-    def jpackagePath = "${jdkHome}/bin/jpackage"
-
-    commandLine jpackagePath,
-            '--name', 'Vectorium',
-            '--input', "$buildDir/libs",
-            '--main-jar', tasks.jar.archiveFile.get().asFile.name,
-            '--main-class', 'org.example.Main',
-            '--type', 'app-image',
-            '--module-path', 'C:\\Users\\Darowiin\\.jdks\\javafx-sdk-22.0.2\\lib',
-            '--add-modules', 'javafx.controls,javafx.fxml,javafx.swing',
-            '--java-options', '-Dfile.encoding=UTF-8'
+jar {
+    manifest {
+        attributes 'Main-Class': 'org.example.Main'
+    }
 }

@@ -285,7 +285,7 @@ public class FileController {
             Element element = (Element) node;
 
             Color fillColor = null;
-            if ((Objects.equals(element.getTagName(), "rect")) || (Objects.equals(element.getTagName(), "circle")) || (Objects.equals(element.getTagName(), "path"))) {
+            if ((Objects.equals(element.getTagName(), "rect")) || (Objects.equals(element.getTagName(), "ellipse")) || (Objects.equals(element.getTagName(), "path"))) {
                 String fillAttribute = element.getAttribute("fill");
                 fillColor = "none".equals(fillAttribute) ? Color.TRANSPARENT : Color.web(fillAttribute);
             }
