@@ -1,4 +1,5 @@
 package org.example.controllers;
+import org.apache.batik.apps.svgbrowser.StatusBar;
 import org.example.enums.ToolMode;
 
 import javafx.fxml.FXML;
@@ -15,6 +16,7 @@ public class DrawController {
     private Group contentGroup;
     private ToolController toolController;
     private ColorController colorController;
+    private HistoryController historyController;
 
     private Rectangle currentRectangle;
     private Ellipse currentEllipse;
@@ -25,15 +27,38 @@ public class DrawController {
     private static boolean isModified = false;
     private double currentStrokeWidth = 2.0;
 
-    public void initialize(Pane drawingArea, ToolController toolController, ColorController colorController) {
+    public void initialize(Pane drawingArea, ToolController toolController, ColorController colorController, HistoryController historyController) {
         this.drawingArea = drawingArea;
         this.toolController = toolController;
         this.colorController = colorController;
+        this.historyController = historyController;
 
-        contentGroup = new Group();
+        this.contentGroup = new Group();
         drawingArea.getChildren().add(contentGroup);
 
         activateDrawingHandlers();
+    }
+
+    public void addShape(Shape shape) {
+        if (!contentGroup.getChildren().contains(shape)) {
+            contentGroup.getChildren().add(shape);
+            historyController.addAction(
+                    () -> contentGroup.getChildren().remove(shape), // Undo
+                    () -> contentGroup.getChildren().add(shape)     // Redo
+            );
+            System.out.println("Shape added.");
+        }
+    }
+
+    public void removeShape(Shape shape) {
+        if (contentGroup.getChildren().contains(shape)) {
+            contentGroup.getChildren().remove(shape);
+            historyController.addAction(
+                    () -> contentGroup.getChildren().add(shape),    // Undo
+                    () -> contentGroup.getChildren().remove(shape)  // Redo
+            );
+            System.out.println("Shape removed.");
+        }
     }
 
     public void activateDrawingHandlers() {
@@ -64,20 +89,20 @@ public class DrawController {
             currentRectangle.setFill(currentColorFill);
             currentRectangle.setStroke(currentColor);
             currentRectangle.setStrokeWidth(currentStrokeWidth);
-            contentGroup.getChildren().add(currentRectangle);
+            addShape(currentRectangle);
             markAsModified();
         } else if (currentTool == ToolMode.ELLIPSE) {
             currentEllipse = new Ellipse(startX, startY, 0, 0);
             currentEllipse.setFill(currentColorFill);
             currentEllipse.setStroke(currentColor);
             currentEllipse.setStrokeWidth(currentStrokeWidth);
-            contentGroup.getChildren().add(currentEllipse);
+            addShape(currentEllipse);
             markAsModified();
         } else if (currentTool == ToolMode.LINE) {
             currentLine = new Line(startX, startY, startX, startY);
             currentLine.setStroke(currentColor);
             currentLine.setStrokeWidth(currentStrokeWidth);
-            contentGroup.getChildren().add(currentLine);
+            addShape(currentLine);
             markAsModified();
         }
         if (currentTool == ToolMode.CURVE) {
@@ -89,7 +114,7 @@ public class DrawController {
             MoveTo moveTo = new MoveTo(startX, startY);
             currentCurve.getElements().add(moveTo);
 
-            contentGroup.getChildren().add(currentCurve);
+            addShape(currentCurve);
             markAsModified();
         }
     }
@@ -153,7 +178,7 @@ public class DrawController {
         markAsModified();
     }
 
-    protected void enableResizing(javafx.scene.shape.Shape shape) {
+    protected void enableResizing(Shape shape) {
         if (shape instanceof Line) {
             enableLineResizing((Line) shape);
         } else if (shape instanceof Ellipse) {
@@ -368,7 +393,7 @@ public class DrawController {
         contentGroup.getChildren().addAll(topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
     }
 
-    private javafx.scene.shape.Circle createHandle(double x, double y) {
+    private Circle createHandle(double x, double y) {
         javafx.scene.shape.Circle handle = new javafx.scene.shape.Circle(x, y, 1.5*currentStrokeWidth);
         handle.setFill(Color.RED);
         handle.setStroke(Color.BLACK);

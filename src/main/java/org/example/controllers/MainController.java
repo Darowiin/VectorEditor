@@ -58,6 +58,7 @@ public class MainController {
     private ColorController colorController;
     private DrawController drawController;
     private FileController fileController;
+    private HistoryController historyController;
 
     private double scaleFactor = 1.0; // Текущий масштаб
     private static final double ZOOM_STEP = 0.1; // Шаг изменения масштаба
@@ -107,6 +108,7 @@ public class MainController {
         colorController = new ColorController();
         drawController = new DrawController();
         fileController = new FileController();
+        historyController = new HistoryController();
 
         selectToolButton.setOnAction(event -> {
             toolController.setCurrentTool(ToolMode.SELECT);
@@ -160,7 +162,7 @@ public class MainController {
                 colorController.setFillColor(fillColorPicker.getValue())
         );
 
-        drawController.initialize(drawingArea, toolController, colorController);
+        drawController.initialize(drawingArea, toolController, colorController, historyController);
         fileController.initialize(drawController);
 
         Rectangle clip = new Rectangle();
@@ -188,6 +190,12 @@ public class MainController {
                         handleNewFile();
                         statusBar.setText("New file created using Ctrl+N.");
                         event.consume();
+                    } else if (event.isControlDown() && event.getCode().toString().equals("Z")) {
+                        undo();
+                        statusBar.setText("Undo using Ctrl+Z.");
+                    } else if (event.isControlDown() && event.getCode().toString().equals("Y")) {
+                        redo();
+                        statusBar.setText("Redo using Ctrl+Y.");
                     }
                 });
             }
@@ -195,8 +203,8 @@ public class MainController {
 
         exitMenuItem.setOnAction(event -> handleExit());
 
-        undoMenuItem.setOnAction(event -> statusBar.setText("Undo: Not implemented yet."));
-        redoMenuItem.setOnAction(event -> statusBar.setText("Redo: Not implemented yet."));
+        undoMenuItem.setOnAction(event -> undo());
+        redoMenuItem.setOnAction(event -> redo());
         deleteMenuItem.setOnAction(event -> statusBar.setText("Delete: Not implemented yet."));
 
         zoomInMenuItem.setOnAction(event -> {
@@ -380,6 +388,16 @@ public class MainController {
         } else {
             System.exit(0);
         }
+    }
+
+    public void undo() {
+        statusBar.setText("Undo");
+        historyController.undo();
+    }
+
+    public void redo() {
+        statusBar.setText("Redo");
+        historyController.redo();
     }
 
     private void applyZoom() {
