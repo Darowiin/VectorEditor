@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'application'
-    id 'edu.sc.seis.launch4j' version '2.3.0'
+    id 'com.github.johnrengelman.shadow' version '7.1.0'
 }
 
 group = 'org.example'
@@ -14,9 +14,11 @@ repositories {
 dependencies {
     implementation "org.openjfx:javafx-controls:22"
     implementation "org.openjfx:javafx-fxml:22"
-    implementation 'org.openjfx:javafx-swing:22'
+    implementation "org.openjfx:javafx-swing:22"
+    implementation "org.openjfx:javafx-graphics:22"
     implementation "org.apache.xmlgraphics:batik-all:1.16"
     implementation "com.google.code.gson:gson:2.10.1"
+    implementation files('C:\\Users\\Darowiin\\.jdks\\javafx-sdk-22.0.2\\lib')
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
 }
 
@@ -27,7 +29,7 @@ application {
 run {
     jvmArgs = [
             '--module-path', 'C:\\Users\\Darowiin\\.jdks\\javafx-sdk-22.0.2\\lib',
-            '--add-modules', 'javafx.controls,javafx.fxml,javafx.swing'
+            '--add-modules', 'javafx.controls,javafx.fxml,javafx.swing,javafx.graphics'
     ]
 }
 
@@ -42,8 +44,47 @@ test {
     useJUnitPlatform()
 }
 
-jar {
+shadowJar {
+    configurations = [project.configurations.runtimeClasspath]
+    archiveBaseName.set('VectorEditor')
+    archiveClassifier.set('all')
+    archiveVersion.set('')
+
     manifest {
-        attributes 'Main-Class': 'org.example.Main'
+        attributes(
+                'Main-Class': 'org.example.Main'
+        )
     }
 }
+
+sourceSets {
+    main {
+        java.srcDirs = ['src/main/java']
+        resources.srcDirs = ['src/main/resources']
+    }
+}
+
+import org.apache.tools.ant.taskdefs.condition.Os
+
+tasks.register('jpackage', Exec) {
+    group = 'distribution'
+    description = 'Создаёт исполняемый файл .exe с помощью jpackage'
+
+    dependsOn shadowJar
+
+    def jarPath = "${buildDir}/libs/VectorEditor-all.jar"
+    def outputDir = "${buildDir}/jpackage"
+
+    commandLine 'jpackage',
+            '--input', "${buildDir}/libs",
+            '--main-jar', 'VectorEditor-all.jar',
+            '--main-class', 'org.example.Main',
+            '--type', 'exe',
+            '--name', 'VectorEditor',
+            '--icon', 'src/main/resources/icon.ico',
+            '--dest', outputDir,
+            '--module-path', 'C:\\Users\\Darowiin\\.jdks\\javafx-sdk-22.0.2\\lib',
+            '--add-modules', 'javafx.controls,javafx.fxml,javafx.graphics,javafx.swing',
+            '--java-options', '-Dprism.order=sw -Dprism.verbose=true -Djava.library.path=C:\\Users\\Darowiin\\.jdks\\javafx-sdk-22.0.2\\bin'
+}
+

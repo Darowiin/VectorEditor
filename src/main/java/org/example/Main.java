@@ -12,7 +12,7 @@ public class Main extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception {
         // Загружаем FXML
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/views/mainView.fxml"));
+        FXMLLoader loader = new FXMLLoader(Main.class.getResource("/views/MainView.fxml"));
         Parent root = loader.load();
         MainController mainController = loader.getController();
         // Настраиваем сцену

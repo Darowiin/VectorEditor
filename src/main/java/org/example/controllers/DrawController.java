@@ -1,5 +1,5 @@
 package org.example.controllers;
-import org.apache.batik.apps.svgbrowser.StatusBar;
+
 import org.example.enums.ToolMode;
 
 import javafx.fxml.FXML;
