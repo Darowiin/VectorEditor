@@ -85,6 +85,6 @@ tasks.register('jpackage', Exec) {
             '--dest', outputDir,
             '--module-path', 'C:\\Users\\Darowiin\\.jdks\\javafx-sdk-22.0.2\\lib',
             '--add-modules', 'javafx.controls,javafx.fxml,javafx.graphics,javafx.swing',
-            '--java-options', '-Dprism.order=sw -Dprism.verbose=true -Djava.library.path=C:\\Users\\Darowiin\\.jdks\\javafx-sdk-22.0.2\\bin'
+            '--java-options', '-Djava.library.path=C:\\Users\\Darowiin\\.jdks\\javafx-sdk-22.0.2\\bin'
 }
 
