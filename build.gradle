@@ -79,7 +79,7 @@ tasks.register('jpackage', Exec) {
             '--main-jar', 'VectorEditor-all.jar',
             '--main-class', 'org.example.Main',
             '--type', 'exe',
-            '--name', 'VectorEditor',
+            '--name', 'Vectorium',
             '--icon', 'src/main/resources/icon.ico',
             '--dest', outputDir,
             '--module-path', 'C:\\Users\\Darowiin\\.jdks\\javafx-sdk-22.0.2\\lib',
