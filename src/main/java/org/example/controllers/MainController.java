@@ -4,6 +4,8 @@ import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
@@ -12,6 +14,7 @@ import javafx.scene.shape.Shape;
 import javafx.stage.FileChooser;
 
 import javafx.stage.WindowEvent;
+import javafx.util.Duration;
 import org.example.enums.ToolMode;
 
 import java.io.File;
@@ -33,6 +36,8 @@ public class MainController {
     @FXML private MenuItem aboutMenuItem;
 
     @FXML private Button selectToolButton;
+    @FXML private Button areaToolButton;
+    @FXML private Button moveToolButton;
     @FXML private Button rectangleToolButton;
     @FXML private Button ellipseToolButton;
     @FXML private Button lineToolButton;
@@ -113,6 +118,14 @@ public class MainController {
         selectToolButton.setOnAction(event -> {
             toolController.setCurrentTool(ToolMode.SELECT);
             statusBar.setText("Tool: Select");
+        });
+        areaToolButton.setOnAction(event -> {
+            toolController.setCurrentTool(ToolMode.AREA);
+            statusBar.setText("Tool: Area");
+        });
+        moveToolButton.setOnAction(event -> {
+            toolController.setCurrentTool(ToolMode.MOVE);
+            statusBar.setText("Tool: Move");
         });
         rectangleToolButton.setOnAction(event -> {
             toolController.setCurrentTool(ToolMode.RECTANGLE);
@@ -263,6 +276,33 @@ public class MainController {
             activateEyedropperTool();
 
         });
+        areaToolButton.setGraphic(createImageView("area.png"));
+        Tooltip areaTooltip = new Tooltip("Выделить область");
+        areaTooltip.setShowDelay(Duration.millis(200));
+        areaToolButton.setTooltip(areaTooltip);
+        moveToolButton.setGraphic(createImageView("move.png"));
+        Tooltip moveTooltip = new Tooltip("Перемещение");
+        moveTooltip.setShowDelay(Duration.millis(200));
+        moveToolButton.setTooltip(moveTooltip);
+        eyedropperToolButton.setGraphic(createImageView("eyedropper.png"));
+        Tooltip eyedropperTooltip = new Tooltip("Пипетка");
+        eyedropperTooltip.setShowDelay(Duration.millis(200));
+        eyedropperToolButton.setTooltip(eyedropperTooltip);
+        rectangleToolButton.setGraphic(createImageView("rectangle.png"));
+        Tooltip rectangleTooltip = new Tooltip("Прямоугольник");
+        rectangleTooltip.setShowDelay(Duration.millis(200));
+        rectangleToolButton.setTooltip(rectangleTooltip);
+        ellipseToolButton.setGraphic(createImageView("ellipse.png"));
+        Tooltip ellipseTooltip = new Tooltip("Эллипс");
+        ellipseTooltip.setShowDelay(Duration.millis(200));
+        ellipseToolButton.setTooltip(ellipseTooltip);
+        lineToolButton.setGraphic(createImageView("line.png"));
+        Tooltip lineTooltip = new Tooltip("Линия");
+        lineTooltip.setShowDelay(Duration.millis(200));
+        lineToolButton.setTooltip(lineTooltip);
+        curveToolButton.setGraphic(createImageView("curve.png"));
+        Tooltip curveTooltip = new Tooltip("Кривая");
+        curveToolButton.setTooltip(curveTooltip);
         aboutMenuItem.setOnAction(event -> statusBar.setText("About: Vectorium v1.0"));
     }
 
@@ -451,6 +491,15 @@ public class MainController {
                 (int) (color.getRed() * 255),
                 (int) (color.getGreen() * 255),
                 (int) (color.getBlue() * 255));
+    }
+
+    private ImageView createImageView(String imagePath) {
+        Image image = new Image(getClass().getResourceAsStream("/" + imagePath));
+        ImageView imageView = new ImageView(image);
+        imageView.setFitWidth(24);
+        imageView.setFitHeight(24);
+        imageView.setPreserveRatio(true);
+        return imageView;
     }
 
 }

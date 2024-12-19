@@ -173,7 +173,7 @@ public class FileController {
             if (node instanceof Rectangle) {
                 Rectangle rect = (Rectangle) node;
                 String fillColor = rect.getFill() == null || rect.getFill().equals(Color.TRANSPARENT)
-                        ? "transparent"
+                        ? "none"
                         : toHexString((Color) rect.getFill());
                 svgContent.append(String.format(Locale.US,
                         "<rect x=\"%.2f\" y=\"%.2f\" width=\"%.2f\" height=\"%.2f\" stroke=\"%s\" stroke-width=\"%.2f\" fill=\"%s\" />\n",
@@ -188,7 +188,7 @@ public class FileController {
             } else if (node instanceof Ellipse) {
                 Ellipse ellipse = (Ellipse) node;
                 String fillColor = ellipse.getFill() == null || ellipse.getFill().equals(Color.TRANSPARENT)
-                        ? "transparent"
+                        ? "none"
                         : toHexString((Color) ellipse.getFill());
                 svgContent.append(String.format(Locale.US,
                         "<ellipse cx=\"%.2f\" cy=\"%.2f\" rx=\"%.2f\" ry=\"%.2f\" stroke=\"%s\" stroke-width=\"%.2f\" fill=\"%s\" />\n",
@@ -214,7 +214,7 @@ public class FileController {
             } else if (node instanceof Path) {
                 Path path = (Path) node;
                 String fillColor = path.getFill() == null || path.getFill().equals(Color.TRANSPARENT)
-                        ? "transparent"
+                        ? "none"
                         : toHexString((Color) path.getFill());
                 StringBuilder pathData = new StringBuilder();
 

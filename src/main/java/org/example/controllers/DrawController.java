@@ -1,5 +1,7 @@
 package org.example.controllers;
 
+import javafx.geometry.Bounds;
+import javafx.geometry.Point2D;
 import org.example.enums.ToolMode;
 
 import javafx.fxml.FXML;
@@ -10,6 +12,11 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 
 public class DrawController {
     @FXML Pane drawingArea;
@@ -18,6 +25,7 @@ public class DrawController {
     private ColorController colorController;
     private HistoryController historyController;
 
+    private Rectangle selectionRectangle;
     private Rectangle currentRectangle;
     private Ellipse currentEllipse;
     private Line currentLine;
@@ -25,7 +33,12 @@ public class DrawController {
 
     private double startX, startY;
     private static boolean isModified = false;
+    private boolean isDraggingSelectedShapes = false; // Флаг для перетаскивания
+    private boolean isSelecting = false;             // Флаг для выделения области
+    private boolean isDrawing = false;               // Флаг для рисования
+    private double selectionStartX, selectionStartY; // Координаты начала выделения
     private double currentStrokeWidth = 2.0;
+    private List<Shape> selectedShapes = new ArrayList<>();
 
     public void initialize(Pane drawingArea, ToolController toolController, ColorController colorController, HistoryController historyController) {
         this.drawingArea = drawingArea;
@@ -62,9 +75,172 @@ public class DrawController {
     }
 
     public void activateDrawingHandlers() {
-        drawingArea.setOnMousePressed(this::handleMousePressed);
-        drawingArea.setOnMouseDragged(this::handleMouseDragged);
-        drawingArea.setOnMouseReleased(this::handleMouseReleased);
+        Map<Shape, Point2D> initialPositions = new HashMap<>();
+        Map<Shape, Point2D> finalPositions = new HashMap<>();
+
+        drawingArea.setOnMousePressed(event -> {
+            ToolMode currentTool = toolController.getCurrentTool();
+            double localX = contentGroup.sceneToLocal(event.getSceneX(), event.getSceneY()).getX();
+            double localY = contentGroup.sceneToLocal(event.getSceneX(), event.getSceneY()).getY();
+
+            if (currentTool == ToolMode.AREA) {
+                isSelecting = true;
+                selectionStartX = localX;
+                selectionStartY = localY;
+
+                selectionRectangle = new Rectangle(selectionStartX, selectionStartY, 0, 0);
+                selectionRectangle.setFill(Color.LIGHTBLUE.deriveColor(0, 1.0, 1.0, 0.3));
+                selectionRectangle.setStroke(Color.BLUE);
+                selectionRectangle.setStrokeWidth(1);
+                contentGroup.getChildren().add(selectionRectangle);
+            } else if (!selectedShapes.isEmpty() && currentTool == ToolMode.MOVE) {
+                startX = event.getSceneX();
+                startY = event.getSceneY();
+                isDraggingSelectedShapes = true;
+                drawingArea.setCursor(Cursor.MOVE);
+                initialPositions.clear();
+                for (Shape shape : selectedShapes) {
+                    initialPositions.put(shape, new Point2D(shape.getTranslateX(), shape.getTranslateY()));
+                }
+            } else if (currentTool == ToolMode.RECTANGLE || currentTool == ToolMode.ELLIPSE || currentTool == ToolMode.LINE || currentTool == ToolMode.CURVE) {
+                startX = localX;
+                startY = localY;
+                isDrawing = true;
+
+                if (currentTool == ToolMode.RECTANGLE) {
+                    currentRectangle = new Rectangle(startX, startY, 0, 0);
+                    currentRectangle.setFill(colorController.getFillColor());
+                    currentRectangle.setStroke(colorController.getCurrentColor());
+                    currentRectangle.setStrokeWidth(currentStrokeWidth);
+                    addShape(currentRectangle);
+                } else if (currentTool == ToolMode.ELLIPSE) {
+                    currentEllipse = new Ellipse(startX, startY, 0, 0);
+                    currentEllipse.setFill(colorController.getFillColor());
+                    currentEllipse.setStroke(colorController.getCurrentColor());
+                    currentEllipse.setStrokeWidth(currentStrokeWidth);
+                    addShape(currentEllipse);
+                } else if (currentTool == ToolMode.LINE) {
+                    currentLine = new Line(startX, startY, startX, startY);
+                    currentLine.setStroke(colorController.getCurrentColor());
+                    currentLine.setStrokeWidth(currentStrokeWidth);
+                    addShape(currentLine);
+                } else if (currentTool == ToolMode.CURVE) {
+                    currentCurve = new Path();
+                    currentCurve.setStroke(colorController.getCurrentColor());
+                    currentCurve.setStrokeWidth(currentStrokeWidth);
+                    currentCurve.setFill(colorController.getFillColor());
+
+                    MoveTo moveTo = new MoveTo(startX, startY);
+                    currentCurve.getElements().add(moveTo);
+                    addShape(currentCurve);
+                }
+            }
+        });
+
+        drawingArea.setOnMouseDragged(event -> {
+            double localX = contentGroup.sceneToLocal(event.getSceneX(), event.getSceneY()).getX();
+            double localY = contentGroup.sceneToLocal(event.getSceneX(), event.getSceneY()).getY();
+
+            if (isSelecting && selectionRectangle != null) {
+                double width = Math.abs(localX - selectionStartX);
+                double height = Math.abs(localY - selectionStartY);
+
+                selectionRectangle.setX(Math.min(selectionStartX, localX));
+                selectionRectangle.setY(Math.min(selectionStartY, localY));
+                selectionRectangle.setWidth(width);
+                selectionRectangle.setHeight(height);
+            } else if (isDraggingSelectedShapes) {
+                double deltaX = event.getSceneX() - startX;
+                double deltaY = event.getSceneY() - startY;
+
+                moveSelectedShapes(deltaX, deltaY);
+                startX = event.getSceneX();
+                startY = event.getSceneY();
+            } else if (isDrawing) {
+                if (currentRectangle != null) {
+                    currentRectangle.setWidth(Math.abs(localX - startX));
+                    currentRectangle.setHeight(Math.abs(localY - startY));
+                    if (localX < startX) currentRectangle.setX(localX);
+                    if (localY < startY) currentRectangle.setY(localY);
+                } else if (currentEllipse != null) {
+                    currentEllipse.setRadiusX(Math.abs(localX - startX));
+                    currentEllipse.setRadiusY(Math.abs(localY - startY));
+                } else if (currentLine != null) {
+                    currentLine.setEndX(localX);
+                    currentLine.setEndY(localY);
+                } else if (currentCurve != null) {
+                    PathElement lastElement = currentCurve.getElements().get(currentCurve.getElements().size() - 1);
+                    if (lastElement instanceof QuadCurveTo quadCurve) {
+                        quadCurve.setControlX(localX);
+                        quadCurve.setControlY(localY);
+                    } else {
+                        QuadCurveTo quadCurveTo = new QuadCurveTo(startX, startY, localX, localY);
+                        currentCurve.getElements().add(quadCurveTo);
+                    }
+                }
+            }
+        });
+
+        drawingArea.setOnMouseReleased(event -> {
+            if (isSelecting && selectionRectangle != null) {
+                Bounds selectionBounds = selectionRectangle.getBoundsInParent();
+                selectedShapes.clear();
+                for (javafx.scene.Node node : contentGroup.getChildren()) {
+                    if (node instanceof Shape shape && shape.getBoundsInParent().intersects(selectionBounds)) {
+                        selectedShapes.add(shape);
+                    }
+                }
+                contentGroup.getChildren().remove(selectionRectangle);
+                selectionRectangle = null;
+                isSelecting = false;
+            } else if (isDraggingSelectedShapes) {
+                isDraggingSelectedShapes = false;
+                drawingArea.setCursor(Cursor.DEFAULT);
+                for (int i = 0; i < selectedShapes.size(); i++) {
+                    enableResizing(selectedShapes.get(i));
+                }
+                finalPositions.clear();
+                for (Shape shape : selectedShapes) {
+                    finalPositions.put(shape, new Point2D(shape.getTranslateX(), shape.getTranslateY()));
+                }
+
+                historyController.addAction(
+                        () -> {
+                            for (Shape shape : initialPositions.keySet()) {
+                                Point2D position = initialPositions.get(shape);
+                                System.out.println("Undo - Setting position: " + position);
+                                shape.setTranslateX(position.getX());
+                                shape.setTranslateY(position.getY());
+                            }
+                        },
+                        () -> {
+                            for (Shape shape : finalPositions.keySet()) {
+                                Point2D position = finalPositions.get(shape);
+                                System.out.println("Redo - Setting position: " + position);
+                                shape.setTranslateX(position.getX());
+                                shape.setTranslateY(position.getY());
+                            }
+                        }
+                );
+                selectedShapes.clear();
+                markAsModified();
+            } else if (isDrawing) {
+                isDrawing = false;
+                if (currentRectangle != null) {
+                    enableResizing(currentRectangle);
+                    currentRectangle = null;
+                } else if (currentEllipse != null) {
+                    enableResizing(currentEllipse);
+                    currentEllipse = null;
+                } else if (currentCurve != null) {
+                    enableResizing(currentCurve);
+                    currentCurve = null;
+                } else if (currentLine != null) {
+                    enableResizing(currentLine);
+                    currentLine = null;
+                }
+            }
+        });
     }
 
     public void deactivateDrawingHandlers() {
@@ -73,109 +249,11 @@ public class DrawController {
         drawingArea.setOnMouseReleased(null);
     }
 
-    private void handleMousePressed(MouseEvent event) {
-        double localX = contentGroup.sceneToLocal(event.getSceneX(), event.getSceneY()).getX();
-        double localY = contentGroup.sceneToLocal(event.getSceneX(), event.getSceneY()).getY();
-
-        startX = localX;
-        startY = localY;
-
-        ToolMode currentTool = toolController.getCurrentTool();
-        Color currentColor = colorController.getCurrentColor();
-        Color currentColorFill = colorController.getFillColor();
-
-        if (currentTool == ToolMode.RECTANGLE) {
-            currentRectangle = new Rectangle(startX, startY, 0, 0);
-            currentRectangle.setFill(currentColorFill);
-            currentRectangle.setStroke(currentColor);
-            currentRectangle.setStrokeWidth(currentStrokeWidth);
-            addShape(currentRectangle);
-            markAsModified();
-        } else if (currentTool == ToolMode.ELLIPSE) {
-            currentEllipse = new Ellipse(startX, startY, 0, 0);
-            currentEllipse.setFill(currentColorFill);
-            currentEllipse.setStroke(currentColor);
-            currentEllipse.setStrokeWidth(currentStrokeWidth);
-            addShape(currentEllipse);
-            markAsModified();
-        } else if (currentTool == ToolMode.LINE) {
-            currentLine = new Line(startX, startY, startX, startY);
-            currentLine.setStroke(currentColor);
-            currentLine.setStrokeWidth(currentStrokeWidth);
-            addShape(currentLine);
-            markAsModified();
+    private void moveSelectedShapes(double deltaX, double deltaY) {
+        for (Shape shape : selectedShapes) {
+            shape.setTranslateX(shape.getTranslateX() + deltaX);
+            shape.setTranslateY(shape.getTranslateY() + deltaY);
         }
-        if (currentTool == ToolMode.CURVE) {
-            currentCurve = new Path();
-            currentCurve.setStroke(currentColor);
-            currentCurve.setStrokeWidth(currentStrokeWidth);
-            currentCurve.setFill(currentColorFill);
-
-            MoveTo moveTo = new MoveTo(startX, startY);
-            currentCurve.getElements().add(moveTo);
-
-            addShape(currentCurve);
-            markAsModified();
-        }
-    }
-
-    private void handleMouseDragged(MouseEvent event) {
-        double localX = contentGroup.sceneToLocal(event.getSceneX(), event.getSceneY()).getX();
-        double localY = contentGroup.sceneToLocal(event.getSceneX(), event.getSceneY()).getY();
-
-        if (currentRectangle != null) {
-            double width = Math.abs(localX - startX);
-            double height = Math.abs(localY - startY);
-            currentRectangle.setWidth(width);
-            currentRectangle.setHeight(height);
-            if (localX < startX) currentRectangle.setX(localX);
-            if (localY < startY) currentRectangle.setY(localY);
-            markAsModified();
-        } else if (currentEllipse != null) {
-            double width = Math.abs(localX - startX);
-            double height = Math.abs(localY - startY);
-
-            currentEllipse.setRadiusX(width);
-            currentEllipse.setRadiusY(height);
-
-            if (localX < startX) currentEllipse.setCenterX(localX);
-            if (localY < startY) currentEllipse.setCenterY(localY);
-
-            markAsModified();
-        } else if (currentLine != null) {
-            currentLine.setEndX(localX);
-            currentLine.setEndY(localY);
-            markAsModified();
-        } else if (currentCurve != null) {
-            PathElement lastElement = currentCurve.getElements().get(currentCurve.getElements().size() - 1);
-
-            if (lastElement instanceof QuadCurveTo) {
-                QuadCurveTo quad = (QuadCurveTo) lastElement;
-                quad.setControlX(localX);
-                quad.setControlY(localY);
-            } else {
-                QuadCurveTo quadCurveTo = new QuadCurveTo(startX, startY, localX, localY);
-                currentCurve.getElements().add(quadCurveTo);
-            }
-            markAsModified();
-        }
-    }
-
-    private void handleMouseReleased(MouseEvent event) {
-        if (currentRectangle != null) {
-            enableResizing(currentRectangle);
-            currentRectangle = null;
-        } else if (currentEllipse != null) {
-            enableResizing(currentEllipse);
-            currentEllipse = null;
-        } else if (currentLine != null) {
-            enableResizing(currentLine);
-            currentLine = null;
-        } else if (currentCurve != null) {
-            enableResizing(currentCurve);
-            currentCurve = null;
-        }
-        markAsModified();
     }
 
     protected void enableResizing(Shape shape) {

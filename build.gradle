@@ -18,7 +18,6 @@ dependencies {
     implementation "org.openjfx:javafx-graphics:22"
     implementation "org.apache.xmlgraphics:batik-all:1.16"
     implementation "com.google.code.gson:gson:2.10.1"
-    implementation files('C:\\Users\\Darowiin\\.jdks\\javafx-sdk-22.0.2\\lib')
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.0'
 }
 

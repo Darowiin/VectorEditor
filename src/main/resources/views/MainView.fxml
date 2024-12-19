@@ -33,11 +33,13 @@
     <left>
         <VBox spacing="10" style="-fx-padding: 10;">
             <Button fx:id="selectToolButton" text="Select" />
-            <Button fx:id="eyedropperToolButton" text="Eyedropper" />
-            <Button fx:id="rectangleToolButton" text="Rectangle" />
-            <Button fx:id="ellipseToolButton" text="Ellipse" />
-            <Button fx:id="lineToolButton" text="Line" />
-            <Button fx:id="curveToolButton" text="Curve" />
+            <Button fx:id="areaToolButton"/>
+            <Button fx:id="moveToolButton"/>
+            <Button fx:id="eyedropperToolButton"/>
+            <Button fx:id="rectangleToolButton"/>
+            <Button fx:id="ellipseToolButton"/>
+            <Button fx:id="lineToolButton"/>
+            <Button fx:id="curveToolButton"/>
         </VBox>
     </left>
 
