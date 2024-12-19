@@ -8,7 +8,6 @@ import javafx.fxml.FXML;
 import javafx.scene.Cursor;
 import javafx.scene.shape.*;
 import javafx.scene.Group;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 
@@ -39,6 +38,7 @@ public class DrawController {
     private double selectionStartX, selectionStartY; // Координаты начала выделения
     private double currentStrokeWidth = 2.0;
     private List<Shape> selectedShapes = new ArrayList<>();
+    protected final Map<Shape, List<Circle>> shapeHandlesMap = new HashMap<>();
 
     public void initialize(Pane drawingArea, ToolController toolController, ColorController colorController, HistoryController historyController) {
         this.drawingArea = drawingArea;
@@ -56,21 +56,16 @@ public class DrawController {
         if (!contentGroup.getChildren().contains(shape)) {
             contentGroup.getChildren().add(shape);
             historyController.addAction(
-                    () -> contentGroup.getChildren().remove(shape), // Undo
-                    () -> contentGroup.getChildren().add(shape)     // Redo
+                    () -> {
+                        contentGroup.getChildren().remove(shape);
+                        removeHandlesFromShape(shape);
+                    },
+                    () -> {
+                        contentGroup.getChildren().add(shape);
+                        enableResizing(shape);
+                    }
             );
             System.out.println("Shape added.");
-        }
-    }
-
-    public void removeShape(Shape shape) {
-        if (contentGroup.getChildren().contains(shape)) {
-            contentGroup.getChildren().remove(shape);
-            historyController.addAction(
-                    () -> contentGroup.getChildren().add(shape),    // Undo
-                    () -> contentGroup.getChildren().remove(shape)  // Redo
-            );
-            System.out.println("Shape removed.");
         }
     }
 
@@ -134,6 +129,7 @@ public class DrawController {
                     currentCurve.getElements().add(moveTo);
                     addShape(currentCurve);
                 }
+                markAsModified();
             }
         });
 
@@ -156,6 +152,7 @@ public class DrawController {
                 moveSelectedShapes(deltaX, deltaY);
                 startX = event.getSceneX();
                 startY = event.getSceneY();
+                markAsModified();
             } else if (isDrawing) {
                 if (currentRectangle != null) {
                     currentRectangle.setWidth(Math.abs(localX - startX));
@@ -211,6 +208,7 @@ public class DrawController {
                                 System.out.println("Undo - Setting position: " + position);
                                 shape.setTranslateX(position.getX());
                                 shape.setTranslateY(position.getY());
+                                removeHandlesFromShape(shape);
                             }
                         },
                         () -> {
@@ -219,6 +217,7 @@ public class DrawController {
                                 System.out.println("Redo - Setting position: " + position);
                                 shape.setTranslateX(position.getX());
                                 shape.setTranslateY(position.getY());
+                                enableResizing(shape);
                             }
                         }
                 );
@@ -239,6 +238,7 @@ public class DrawController {
                     enableResizing(currentLine);
                     currentLine = null;
                 }
+                markAsModified();
             }
         });
     }
@@ -257,18 +257,31 @@ public class DrawController {
     }
 
     protected void enableResizing(Shape shape) {
+        List<Circle> handles = new ArrayList<>();
+
         if (shape instanceof Line) {
-            enableLineResizing((Line) shape);
+            enableLineResizing((Line) shape, handles);
         } else if (shape instanceof Ellipse) {
-            enableEllipseResizing((Ellipse) shape);
+            enableEllipseResizing((Ellipse) shape, handles);
         } else if (shape instanceof Rectangle) {
-            enableRectangleResizing((Rectangle) shape);
+            enableRectangleResizing((Rectangle) shape, handles);
         } else if (shape instanceof Path) {
-            enableCurveResizing((Path) shape);
+            enableCurveResizing((Path) shape, handles);
+        }
+
+        shapeHandlesMap.put(shape, handles);
+        contentGroup.getChildren().addAll(handles);
+    }
+
+    private void removeHandlesFromShape(Shape shape) {
+        List<Circle> handles = shapeHandlesMap.get(shape);
+        if (handles != null) {
+            contentGroup.getChildren().removeAll(handles);
+            shapeHandlesMap.remove(shape);
         }
     }
 
-    private void enableCurveResizing(Path shape) {
+    private void enableCurveResizing(Path shape, List<Circle> handles) {
         for (PathElement element : shape.getElements()) {
             if (element instanceof MoveTo moveTo) {
                 javafx.scene.shape.Circle startHandle = createHandle(moveTo.getX(), moveTo.getY());
@@ -290,7 +303,7 @@ public class DrawController {
                 });
 
 
-                contentGroup.getChildren().add(startHandle);
+                handles.add(startHandle);
 
             } else if (element instanceof QuadCurveTo quadCurveTo) {
                 javafx.scene.shape.Circle controlHandle = createHandle(quadCurveTo.getControlX(), quadCurveTo.getControlY());
@@ -319,7 +332,7 @@ public class DrawController {
                     }
                 });
 
-                contentGroup.getChildren().addAll(controlHandle, endHandle);
+                handles.add(controlHandle);
             } else if (element instanceof LineTo lineTo) {
                 javafx.scene.shape.Circle endHandle = createHandle(lineTo.getX(), lineTo.getY());
 
@@ -339,14 +352,14 @@ public class DrawController {
                     }
                 });
 
-                contentGroup.getChildren().add(endHandle);
+                handles.add(endHandle);
             }
         }
     }
 
-    private void enableLineResizing(Line line) {
-        javafx.scene.shape.Circle startHandle = createHandle(line.getStartX(), line.getStartY());
-        javafx.scene.shape.Circle endHandle = createHandle(line.getEndX(), line.getEndY());
+    private void enableLineResizing(Line line, List<Circle> handles) {
+        Circle startHandle = createHandle(line.getStartX(), line.getStartY());
+        Circle endHandle = createHandle(line.getEndX(), line.getEndY());
 
         toggleHandlesVisibility(false, startHandle, endHandle);
 
@@ -371,12 +384,13 @@ public class DrawController {
             endHandle.setCenterY(e.getY());
         });
 
-        contentGroup.getChildren().addAll(startHandle, endHandle);
+        handles.add(startHandle);
+        handles.add(endHandle);
     }
 
-    private void enableEllipseResizing(Ellipse ellipse) {
-        javafx.scene.shape.Circle widthHandle = createHandle(ellipse.getCenterX() + ellipse.getRadiusX(), ellipse.getCenterY()); // Для ширины
-        javafx.scene.shape.Circle heightHandle = createHandle(ellipse.getCenterX(), ellipse.getCenterY() + ellipse.getRadiusY()); // Для высоты
+    private void enableEllipseResizing(Ellipse ellipse, List<Circle> handles) {
+        Circle widthHandle = createHandle(ellipse.getCenterX() + ellipse.getRadiusX(), ellipse.getCenterY());
+        Circle heightHandle = createHandle(ellipse.getCenterX(), ellipse.getCenterY() + ellipse.getRadiusY());
 
         toggleHandlesVisibility(false, widthHandle, heightHandle);
 
@@ -398,10 +412,12 @@ public class DrawController {
             ellipse.setRadiusY(newRadiusY);
             heightHandle.setCenterY(ellipse.getCenterY() + newRadiusY);
         });
-        contentGroup.getChildren().addAll(widthHandle, heightHandle);
+
+        handles.add(widthHandle);
+        handles.add(heightHandle);
     }
 
-    private void enableRectangleResizing(Rectangle rectangle) {
+    private void enableRectangleResizing(Rectangle rectangle, List<Circle> handles) {
         javafx.scene.shape.Circle topLeftHandle = createHandle(rectangle.getX(), rectangle.getY());
         javafx.scene.shape.Circle topRightHandle = createHandle(rectangle.getX() + rectangle.getWidth(), rectangle.getY());
         javafx.scene.shape.Circle bottomLeftHandle = createHandle(rectangle.getX(), rectangle.getY() + rectangle.getHeight());
@@ -468,7 +484,10 @@ public class DrawController {
             updateRectangleHandles(rectangle, topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
         });
 
-        contentGroup.getChildren().addAll(topLeftHandle, topRightHandle, bottomLeftHandle, bottomRightHandle);
+        handles.add(topLeftHandle);
+        handles.add(topRightHandle);
+        handles.add(bottomLeftHandle);
+        handles.add(bottomRightHandle);
     }
 
     private Circle createHandle(double x, double y) {
