@@ -30,9 +30,11 @@ import java.util.Objects;
 
 public class FileController {
     private DrawController drawController;
+    private ResizingController resizingController;
 
-    public void initialize(DrawController drawController) {
+    public void initialize(DrawController drawController, ResizingController resizingController) {
         this.drawController = drawController;
+        this.resizingController = resizingController;
     }
 
     public void saveToJSON(File file) throws IOException {
@@ -73,6 +75,15 @@ public class FileController {
                 data.setStrokeColor(line.getStroke().toString());
                 data.setStrokeWidth(line.getStrokeWidth());
                 data.setFillColor("none");
+                shapeDataList.add(data);
+            } else if (node instanceof Polygon) {
+                Polygon polygon = (Polygon) node;
+                ShapeData data = new ShapeData();
+                data.setType("polygon");
+                data.setPoints(new ArrayList<>(polygon.getPoints()));
+                data.setStrokeColor(polygon.getStroke().toString());
+                data.setStrokeWidth(polygon.getStrokeWidth());
+                data.setFillColor(polygon.getFill().toString());
                 shapeDataList.add(data);
             } else if (node instanceof Path) {
                 Path path = (Path) node;
@@ -133,7 +144,7 @@ public class FileController {
                         rectangle.setStrokeWidth(data.getStrokeWidth());
                         rectangle.setFill(Color.web(data.getFillColor()));
                         drawController.getContentGroup().getChildren().add(rectangle);
-                        drawController.enableResizing(rectangle);
+                        resizingController.enableResizing(rectangle);
                         break;
                     case "ellipse":
                         Ellipse ellipse = new Ellipse(data.getCenterX(), data.getCenterY(), data.getRadiusX(), data.getRadiusY());
@@ -141,14 +152,14 @@ public class FileController {
                         ellipse.setStrokeWidth(data.getStrokeWidth());
                         ellipse.setFill(Color.web(data.getFillColor()));
                         drawController.getContentGroup().getChildren().add(ellipse);
-                        drawController.enableResizing(ellipse);
+                        resizingController.enableResizing(ellipse);
                         break;
                     case "line":
                         Line line = new Line(data.getX(), data.getY(), data.getWidth(), data.getHeight());
                         line.setStroke(Color.web(data.getStrokeColor()));
                         line.setStrokeWidth(data.getStrokeWidth());
                         drawController.getContentGroup().getChildren().add(line);
-                        drawController.enableResizing(line);
+                        resizingController.enableResizing(line);
                         break;
                     case "path":
                         Path path = new Path();
@@ -157,7 +168,16 @@ public class FileController {
                         path.setStrokeWidth(data.getStrokeWidth());
                         path.setFill(Color.web(data.getFillColor()));
                         drawController.getContentGroup().getChildren().add(path);
-                        drawController.enableResizing(path);
+                        resizingController.enableResizing(path);
+                        break;
+                    case "polygon":
+                        Polygon polygon = new Polygon();
+                        polygon.getPoints().addAll(data.getPoints());
+                        polygon.setStroke(Color.web(data.getStrokeColor()));
+                        polygon.setStrokeWidth(data.getStrokeWidth());
+                        polygon.setFill(Color.web(data.getFillColor()));
+                        drawController.getContentGroup().getChildren().add(polygon);
+                        resizingController.enableResizing(polygon);
                         break;
                 }
             }
@@ -210,6 +230,23 @@ public class FileController {
                         line.getEndY(),
                         toHexString((Color) line.getStroke()),
                         line.getStrokeWidth()
+                ));
+            } else if (node instanceof Polygon) {
+                Polygon polygon = (Polygon) node;
+                String fillColor = polygon.getFill() == null || polygon.getFill().equals(Color.TRANSPARENT)
+                        ? "none"
+                        : toHexString((Color) polygon.getFill());
+                StringBuilder pointsData = new StringBuilder();
+                for (int i = 0; i < polygon.getPoints().size(); i += 2) {
+                    pointsData.append(String.format(Locale.US, "%.2f,%.2f ",
+                            polygon.getPoints().get(i), polygon.getPoints().get(i + 1)));
+                }
+                svgContent.append(String.format(Locale.US,
+                        "<polygon points=\"%s\" stroke=\"%s\" stroke-width=\"%.2f\" fill=\"%s\" />\n",
+                        pointsData.toString().trim(),
+                        toHexString((Color) polygon.getStroke()),
+                        polygon.getStrokeWidth(),
+                        fillColor
                 ));
             } else if (node instanceof Path) {
                 Path path = (Path) node;
@@ -285,7 +322,10 @@ public class FileController {
             Element element = (Element) node;
 
             Color fillColor = null;
-            if ((Objects.equals(element.getTagName(), "rect")) || (Objects.equals(element.getTagName(), "ellipse")) || (Objects.equals(element.getTagName(), "path"))) {
+            if ((Objects.equals(element.getTagName(), "rect")) ||
+                    (Objects.equals(element.getTagName(), "ellipse")) ||
+                    (Objects.equals(element.getTagName(), "path")) ||
+                    (Objects.equals(element.getTagName(), "polygon"))) {
                 String fillAttribute = element.getAttribute("fill");
                 fillColor = "none".equals(fillAttribute) ? Color.TRANSPARENT : Color.web(fillAttribute);
             }
@@ -309,7 +349,7 @@ public class FileController {
                     rect.setStrokeWidth(strokeWidth);
                     rect.setFill(fillColor); // Устанавливаем заливку
                     drawController.getContentGroup().getChildren().add(rect);
-                    drawController.enableResizing(rect);
+                    resizingController.enableResizing(rect);
                     break;
 
                 case "ellipse":
@@ -323,7 +363,7 @@ public class FileController {
                     ellipse.setStrokeWidth(strokeWidth);
                     ellipse.setFill(fillColor);
                     drawController.getContentGroup().getChildren().add(ellipse);
-                    drawController.enableResizing(ellipse);
+                    resizingController.enableResizing(ellipse);
                     break;
 
                 case "line":
@@ -336,7 +376,7 @@ public class FileController {
                     line.setStroke(strokeColor);
                     line.setStrokeWidth(strokeWidth);
                     drawController.getContentGroup().getChildren().add(line);
-                    drawController.enableResizing(line);
+                    resizingController.enableResizing(line);
                     break;
 
                 case "path":
@@ -347,7 +387,25 @@ public class FileController {
                     path.setStrokeWidth(strokeWidth);
                     path.setFill(fillColor);
                     drawController.getContentGroup().getChildren().add(path);
-                    drawController.enableResizing(path);
+                    resizingController.enableResizing(path);
+                    break;
+
+                case "polygon":
+                    String points = element.getAttribute("points");
+                    Polygon polygon = new Polygon();
+                    String[] pointsArray = points.split("\\s+");
+                    for (String point : pointsArray) {
+                        String[] coordinates = point.split(",");
+                        if (coordinates.length == 2) {
+                            polygon.getPoints().add(parseDouble(coordinates[0]));
+                            polygon.getPoints().add(parseDouble(coordinates[1]));
+                        }
+                    }
+                    polygon.setStroke(strokeColor);
+                    polygon.setStrokeWidth(strokeWidth);
+                    polygon.setFill(fillColor);
+                    drawController.getContentGroup().getChildren().add(polygon);
+                    resizingController.enableResizing(polygon);
                     break;
 
                 case "g": // Группа
@@ -376,7 +434,7 @@ public class FileController {
         // Удаляем временные элементы (например, кружочки) перед созданием снимка
         List<javafx.scene.Node> toRemove = new ArrayList<>();
         for (javafx.scene.Node node : drawController.getContentGroup().getChildren()) {
-            if (node instanceof Circle && "draggable-handle".equals(node.getId())) {
+            if (node instanceof Circle) {
                 toRemove.add(node);
             }
         }

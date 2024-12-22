@@ -1,5 +1,7 @@
 package org.example.models;
 
+import java.util.List;
+
 public class ShapeData {
     private String type;
     private double x;
@@ -14,6 +16,7 @@ public class ShapeData {
     private String fillColor;
     private double strokeWidth;
     private String pathData;
+    private List<Double> points;
 
     // Геттеры и сеттеры
     public String getType() {
@@ -86,4 +89,12 @@ public class ShapeData {
     }
     public String getPathData() { return pathData; }
     public void setPathData(String pathData) { this.pathData = pathData; }
+
+    public List<Double> getPoints() {
+        return points;
+    }
+
+    public void setPoints(List<Double> points) {
+        this.points = points;
+    }
 }

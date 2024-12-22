@@ -42,6 +42,7 @@ public class MainController {
     @FXML private Button ellipseToolButton;
     @FXML private Button lineToolButton;
     @FXML private Button curveToolButton;
+    @FXML private Button polygonToolButton;
     @FXML private Button colorBlack;
     @FXML private Button colorRed;
     @FXML private Button colorBlue;
@@ -64,6 +65,7 @@ public class MainController {
     private DrawController drawController;
     private FileController fileController;
     private HistoryController historyController;
+    private ResizingController resizingController;
 
     private double scaleFactor = 1.0; // Текущий масштаб
     private static final double ZOOM_STEP = 0.1; // Шаг изменения масштаба
@@ -114,6 +116,7 @@ public class MainController {
         drawController = new DrawController();
         fileController = new FileController();
         historyController = new HistoryController();
+        resizingController = new ResizingController();
 
         selectToolButton.setOnAction(event -> {
             toolController.setCurrentTool(ToolMode.SELECT);
@@ -143,7 +146,10 @@ public class MainController {
             toolController.setCurrentTool(ToolMode.CURVE);
             statusBar.setText("Tool: Curve");
         });
-
+        polygonToolButton.setOnAction(event -> {
+            toolController.setCurrentTool(ToolMode.POLYGON);
+            statusBar.setText("Tool: Polygon");
+        });
         colorBlack.setOnAction(event -> {
             colorController.setCurrentColor(Color.BLACK);
             statusBar.setText("Color: Black");
@@ -175,8 +181,9 @@ public class MainController {
                 colorController.setFillColor(fillColorPicker.getValue())
         );
 
-        drawController.initialize(drawingArea, toolController, colorController, historyController);
-        fileController.initialize(drawController);
+        drawController.initialize(drawingArea, toolController, colorController, historyController, resizingController);
+        resizingController.initialize(toolController,drawController);
+        fileController.initialize(drawController, resizingController);
 
         Rectangle clip = new Rectangle();
         clip.widthProperty().bind(drawingArea.widthProperty());
@@ -276,33 +283,47 @@ public class MainController {
             activateEyedropperTool();
 
         });
+
         areaToolButton.setGraphic(createImageView("area.png"));
         Tooltip areaTooltip = new Tooltip("Выделить область");
         areaTooltip.setShowDelay(Duration.millis(200));
         areaToolButton.setTooltip(areaTooltip);
+
         moveToolButton.setGraphic(createImageView("move.png"));
         Tooltip moveTooltip = new Tooltip("Перемещение");
         moveTooltip.setShowDelay(Duration.millis(200));
         moveToolButton.setTooltip(moveTooltip);
+
         eyedropperToolButton.setGraphic(createImageView("eyedropper.png"));
         Tooltip eyedropperTooltip = new Tooltip("Пипетка");
         eyedropperTooltip.setShowDelay(Duration.millis(200));
         eyedropperToolButton.setTooltip(eyedropperTooltip);
+
         rectangleToolButton.setGraphic(createImageView("rectangle.png"));
         Tooltip rectangleTooltip = new Tooltip("Прямоугольник");
         rectangleTooltip.setShowDelay(Duration.millis(200));
         rectangleToolButton.setTooltip(rectangleTooltip);
+
         ellipseToolButton.setGraphic(createImageView("ellipse.png"));
         Tooltip ellipseTooltip = new Tooltip("Эллипс");
         ellipseTooltip.setShowDelay(Duration.millis(200));
         ellipseToolButton.setTooltip(ellipseTooltip);
+
         lineToolButton.setGraphic(createImageView("line.png"));
         Tooltip lineTooltip = new Tooltip("Линия");
         lineTooltip.setShowDelay(Duration.millis(200));
         lineToolButton.setTooltip(lineTooltip);
+
         curveToolButton.setGraphic(createImageView("curve.png"));
         Tooltip curveTooltip = new Tooltip("Кривая");
+        curveTooltip.setShowDelay(Duration.millis(200));
         curveToolButton.setTooltip(curveTooltip);
+
+        polygonToolButton.setGraphic(createImageView("polygon.png"));
+        Tooltip polygonTooltip = new Tooltip("Ломаная");
+        polygonTooltip.setShowDelay(Duration.millis(200));
+        polygonToolButton.setTooltip(polygonTooltip);
+
         aboutMenuItem.setOnAction(event -> statusBar.setText("About: Vectorium v1.0"));
     }
 

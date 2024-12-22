@@ -40,6 +40,7 @@
             <Button fx:id="ellipseToolButton"/>
             <Button fx:id="lineToolButton"/>
             <Button fx:id="curveToolButton"/>
+            <Button fx:id="polygonToolButton"/>
         </VBox>
     </left>
 
