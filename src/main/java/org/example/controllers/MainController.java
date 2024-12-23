@@ -2,6 +2,7 @@ package org.example.controllers;
 
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
+import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
@@ -20,6 +21,7 @@ import org.example.enums.ToolMode;
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.Objects;
 import java.util.Optional;
 
 public class MainController {
@@ -43,6 +45,7 @@ public class MainController {
     @FXML private Button lineToolButton;
     @FXML private Button curveToolButton;
     @FXML private Button polygonToolButton;
+    @FXML private Button textToolButton;
     @FXML private Button colorBlack;
     @FXML private Button colorRed;
     @FXML private Button colorBlue;
@@ -150,6 +153,10 @@ public class MainController {
             toolController.setCurrentTool(ToolMode.POLYGON);
             statusBar.setText("Tool: Polygon");
         });
+        textToolButton.setOnAction(event -> {
+            toolController.setCurrentTool(ToolMode.TEXT);
+            statusBar.setText("Tool: Text");
+        });
         colorBlack.setOnAction(event -> {
             colorController.setCurrentColor(Color.BLACK);
             statusBar.setText("Color: Black");
@@ -182,7 +189,7 @@ public class MainController {
         );
 
         drawController.initialize(drawingArea, toolController, colorController, historyController, resizingController);
-        resizingController.initialize(toolController,drawController);
+        resizingController.initialize(toolController,drawController, historyController);
         fileController.initialize(drawController, resizingController);
 
         Rectangle clip = new Rectangle();
@@ -225,7 +232,41 @@ public class MainController {
 
         undoMenuItem.setOnAction(event -> undo());
         redoMenuItem.setOnAction(event -> redo());
-        deleteMenuItem.setOnAction(event -> statusBar.setText("Delete: Not implemented yet."));
+        deleteMenuItem.setOnAction(event -> {
+            statusBar.setText("Delete mode activated. Click on a shape to delete it. Right mouse button to deactivate.");
+
+            drawingArea.setOnMouseClicked(mouseEvent -> {
+                drawController.deactivateDrawingHandlers();
+                Node pickedNode = mouseEvent.getPickResult().getIntersectedNode();
+
+                if (pickedNode instanceof Shape shape) {
+                    int index = drawController.contentGroup.getChildren().indexOf(shape);
+
+                    historyController.addAction(
+                            () -> { // Undo - восстановить фигуру
+                                drawController.contentGroup.getChildren().add(index, shape);
+                            },
+                            () -> { // Redo - удалить фигуру
+                                drawController.contentGroup.getChildren().remove(shape);
+                            }
+                    );
+
+                    drawController.contentGroup.getChildren().remove(shape);
+                    statusBar.setText("Shape deleted.");
+                } else {
+                    statusBar.setText("No shape selected for deletion.");
+                }
+            });
+
+            drawingArea.setOnMousePressed(mouseEvent -> {
+                if (mouseEvent.isSecondaryButtonDown()) {
+                    drawingArea.setOnMouseClicked(null);
+                    drawingArea.setOnMousePressed(null);
+                    drawController.activateDrawingHandlers();
+                    statusBar.setText("Delete mode deactivated.");
+                }
+            });
+        });
 
         zoomInMenuItem.setOnAction(event -> {
             if (scaleFactor < MAX_SCALE) {
@@ -323,6 +364,11 @@ public class MainController {
         Tooltip polygonTooltip = new Tooltip("Ломаная");
         polygonTooltip.setShowDelay(Duration.millis(200));
         polygonToolButton.setTooltip(polygonTooltip);
+
+        textToolButton.setGraphic(createImageView("text.png"));
+        Tooltip textTooltip = new Tooltip("Текст");
+        textTooltip.setShowDelay(Duration.millis(200));
+        textToolButton.setTooltip(textTooltip);
 
         aboutMenuItem.setOnAction(event -> statusBar.setText("About: Vectorium v1.0"));
     }
@@ -476,13 +522,15 @@ public class MainController {
 
         drawingArea.setOnMousePressed(mouseEvent -> {
             Node pickedNode = mouseEvent.getPickResult().getIntersectedNode();
-            if (pickedNode instanceof Shape) {
-                Shape shape = (Shape) pickedNode;
+            if (pickedNode instanceof Shape shape) {
 
                 if (mouseEvent.isPrimaryButtonDown()) {
                     // ЛКМ: выбираем цвет обводки
                     Color strokeColor = (Color) shape.getStroke();
-                    if (strokeColor != null) {
+                    if (mouseEvent.isControlDown()) {
+                        shape.setStroke(colorPicker.getValue());
+                    }
+                    else if (strokeColor != null) {
                         colorPicker.setValue(strokeColor);
                         colorController.setCurrentColor(colorPicker.getValue());
                         statusBar.setText("Stroke color picked: " + colorToHex(strokeColor));
@@ -490,7 +538,10 @@ public class MainController {
                 } else if (mouseEvent.isSecondaryButtonDown()) {
                     // ПКМ: выбираем цвет заливки
                     Paint fillPaint = shape.getFill();
-                    if (fillPaint instanceof Color fillColor) {
+                    if (mouseEvent.isControlDown()) {
+                        shape.setFill(fillColorPicker.getValue());
+                    }
+                    else if (fillPaint instanceof Color fillColor) {
                         fillColorPicker.setValue(fillColor);
                         colorController.setFillColor(fillColor);
                         statusBar.setText("Fill color picked: " + colorToHex(fillColor));
@@ -515,7 +566,7 @@ public class MainController {
     }
 
     private ImageView createImageView(String imagePath) {
-        Image image = new Image(getClass().getResourceAsStream("/" + imagePath));
+        Image image = new Image(Objects.requireNonNull(getClass().getResourceAsStream("/" + imagePath)));
         ImageView imageView = new ImageView(image);
         imageView.setFitWidth(24);
         imageView.setFitHeight(24);

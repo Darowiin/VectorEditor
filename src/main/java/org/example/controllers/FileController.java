@@ -40,8 +40,7 @@ public class FileController {
     public void saveToJSON(File file) throws IOException {
         List<ShapeData> shapeDataList = new ArrayList<>();
         for (javafx.scene.Node node : drawController.getContentGroup().getChildren()) {
-            if (node instanceof Rectangle) {
-                Rectangle rectangle = (Rectangle) node;
+            if (node instanceof Rectangle rectangle) {
                 ShapeData data = new ShapeData();
                 data.setType("rectangle");
                 data.setX(rectangle.getX());
@@ -52,8 +51,7 @@ public class FileController {
                 data.setStrokeWidth(rectangle.getStrokeWidth());
                 data.setFillColor(rectangle.getFill().toString()); // Заливка
                 shapeDataList.add(data);
-            } else if (node instanceof Ellipse) {
-                Ellipse ellipse = (Ellipse) node;
+            } else if (node instanceof Ellipse ellipse) {
                 ShapeData data = new ShapeData();
                 data.setType("ellipse");
                 data.setCenterX(ellipse.getCenterX());
@@ -64,8 +62,7 @@ public class FileController {
                 data.setStrokeWidth(ellipse.getStrokeWidth());
                 data.setFillColor(ellipse.getFill().toString());
                 shapeDataList.add(data);
-            } else if (node instanceof Line) {
-                Line line = (Line) node;
+            } else if (node instanceof Line line) {
                 ShapeData data = new ShapeData();
                 data.setType("line");
                 data.setX(line.getStartX());
@@ -76,8 +73,7 @@ public class FileController {
                 data.setStrokeWidth(line.getStrokeWidth());
                 data.setFillColor("none");
                 shapeDataList.add(data);
-            } else if (node instanceof Polygon) {
-                Polygon polygon = (Polygon) node;
+            } else if (node instanceof Polygon polygon) {
                 ShapeData data = new ShapeData();
                 data.setType("polygon");
                 data.setPoints(new ArrayList<>(polygon.getPoints()));
@@ -85,25 +81,20 @@ public class FileController {
                 data.setStrokeWidth(polygon.getStrokeWidth());
                 data.setFillColor(polygon.getFill().toString());
                 shapeDataList.add(data);
-            } else if (node instanceof Path) {
-                Path path = (Path) node;
+            } else if (node instanceof Path path) {
                 StringBuilder pathData = new StringBuilder();
 
                 for (PathElement element : path.getElements()) {
-                    if (element instanceof MoveTo) {
-                        MoveTo moveTo = (MoveTo) element;
+                    if (element instanceof MoveTo moveTo) {
                         pathData.append(String.format(Locale.US, "M %.2f %.2f ", moveTo.getX(), moveTo.getY()));
-                    } else if (element instanceof LineTo) {
-                        LineTo lineTo = (LineTo) element;
+                    } else if (element instanceof LineTo lineTo) {
                         pathData.append(String.format(Locale.US, "L %.2f %.2f ", lineTo.getX(), lineTo.getY()));
-                    } else if (element instanceof CubicCurveTo) {
-                        CubicCurveTo cubic = (CubicCurveTo) element;
+                    } else if (element instanceof CubicCurveTo cubic) {
                         pathData.append(String.format(Locale.US, "C %.2f %.2f, %.2f %.2f, %.2f %.2f ",
                                 cubic.getControlX1(), cubic.getControlY1(),
                                 cubic.getControlX2(), cubic.getControlY2(),
                                 cubic.getX(), cubic.getY()));
-                    } else if (element instanceof QuadCurveTo) {
-                        QuadCurveTo quad = (QuadCurveTo) element;
+                    } else if (element instanceof QuadCurveTo quad) {
                         pathData.append(String.format(Locale.US, "Q %.2f %.2f, %.2f %.2f ",
                                 quad.getControlX(), quad.getControlY(),
                                 quad.getX(), quad.getY()));
@@ -136,7 +127,6 @@ public class FileController {
             List<ShapeData> shapeDataList = gson.fromJson(reader, listType);
             drawController.getContentGroup().getChildren().clear();
             for (ShapeData data : shapeDataList) {
-                System.out.println(data.getType());
                 switch (data.getType()) {
                     case "rectangle":
                         Rectangle rectangle = new Rectangle(data.getX(), data.getY(), data.getWidth(), data.getHeight());
@@ -190,8 +180,7 @@ public class FileController {
         svgContent.append("<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">\n");
 
         for (javafx.scene.Node node : drawController.getContentGroup().getChildren()) {
-            if (node instanceof Rectangle) {
-                Rectangle rect = (Rectangle) node;
+            if (node instanceof Rectangle rect) {
                 String fillColor = rect.getFill() == null || rect.getFill().equals(Color.TRANSPARENT)
                         ? "none"
                         : toHexString((Color) rect.getFill());
@@ -205,8 +194,7 @@ public class FileController {
                         rect.getStrokeWidth(),
                         fillColor
                 ));
-            } else if (node instanceof Ellipse) {
-                Ellipse ellipse = (Ellipse) node;
+            } else if (node instanceof Ellipse ellipse) {
                 String fillColor = ellipse.getFill() == null || ellipse.getFill().equals(Color.TRANSPARENT)
                         ? "none"
                         : toHexString((Color) ellipse.getFill());
@@ -220,8 +208,7 @@ public class FileController {
                         ellipse.getStrokeWidth(),
                         fillColor
                 ));
-            } else if (node instanceof Line) {
-                Line line = (Line) node;
+            } else if (node instanceof Line line) {
                 svgContent.append(String.format(Locale.US,
                         "<line x1=\"%.2f\" y1=\"%.2f\" x2=\"%.2f\" y2=\"%.2f\" stroke=\"%s\" stroke-width=\"%.2f\" />\n",
                         line.getStartX(),
@@ -231,8 +218,7 @@ public class FileController {
                         toHexString((Color) line.getStroke()),
                         line.getStrokeWidth()
                 ));
-            } else if (node instanceof Polygon) {
-                Polygon polygon = (Polygon) node;
+            } else if (node instanceof Polygon polygon) {
                 String fillColor = polygon.getFill() == null || polygon.getFill().equals(Color.TRANSPARENT)
                         ? "none"
                         : toHexString((Color) polygon.getFill());
@@ -248,28 +234,23 @@ public class FileController {
                         polygon.getStrokeWidth(),
                         fillColor
                 ));
-            } else if (node instanceof Path) {
-                Path path = (Path) node;
+            } else if (node instanceof Path path) {
                 String fillColor = path.getFill() == null || path.getFill().equals(Color.TRANSPARENT)
                         ? "none"
                         : toHexString((Color) path.getFill());
                 StringBuilder pathData = new StringBuilder();
 
                 for (PathElement element : path.getElements()) {
-                    if (element instanceof MoveTo) {
-                        MoveTo moveTo = (MoveTo) element;
+                    if (element instanceof MoveTo moveTo) {
                         pathData.append(String.format(Locale.US, "M %.2f %.2f ", moveTo.getX(), moveTo.getY()));
-                    } else if (element instanceof LineTo) {
-                        LineTo lineTo = (LineTo) element;
+                    } else if (element instanceof LineTo lineTo) {
                         pathData.append(String.format(Locale.US, "L %.2f %.2f ", lineTo.getX(), lineTo.getY()));
-                    } else if (element instanceof CubicCurveTo) {
-                        CubicCurveTo cubic = (CubicCurveTo) element;
+                    } else if (element instanceof CubicCurveTo cubic) {
                         pathData.append(String.format(Locale.US, "C %.2f %.2f, %.2f %.2f, %.2f %.2f ",
                                 cubic.getControlX1(), cubic.getControlY1(),
                                 cubic.getControlX2(), cubic.getControlY2(),
                                 cubic.getX(), cubic.getY()));
-                    } else if (element instanceof QuadCurveTo) {
-                        QuadCurveTo quad = (QuadCurveTo) element;
+                    } else if (element instanceof QuadCurveTo quad) {
                         pathData.append(String.format(Locale.US, "Q %.2f %.2f, %.2f %.2f ",
                                 quad.getControlX(), quad.getControlY(),
                                 quad.getX(), quad.getY()));

@@ -14,12 +14,14 @@ import java.util.Map;
 public class ResizingController {
     ToolController toolController;
     DrawController drawController;
+    HistoryController historyController;
 
     protected final Map<Shape, List<Circle>> shapeHandlesMap = new HashMap<>();
 
-    public void initialize(ToolController toolController, DrawController drawController) {
+    public void initialize(ToolController toolController, DrawController drawController, HistoryController historyController) {
         this.toolController = toolController;
         this.drawController = drawController;
+        this.historyController = historyController;
     }
 
     protected void enableResizing(Shape shape) {
@@ -78,7 +80,7 @@ public class ResizingController {
             if (element instanceof MoveTo moveTo) {
                 Circle startHandle = createHandle(moveTo.getX(), moveTo.getY());
 
-                toggleHandlesVisibility(true, startHandle);
+                toggleHandlesVisibility(false, startHandle);
 
                 startHandle.setOnMouseDragged(e -> {
                     moveTo.setX(e.getX());
@@ -93,7 +95,7 @@ public class ResizingController {
                 Circle controlHandle = createHandle(quadCurveTo.getControlX(), quadCurveTo.getControlY());
                 Circle endHandle = createHandle(quadCurveTo.getX(), quadCurveTo.getY());
 
-                toggleHandlesVisibility(true, controlHandle, endHandle);
+                toggleHandlesVisibility(false, controlHandle, endHandle);
 
                 controlHandle.setOnMouseDragged(e -> {
                     quadCurveTo.setControlX(e.getX());
@@ -113,7 +115,7 @@ public class ResizingController {
             } else if (element instanceof LineTo lineTo) {
                 Circle endHandle = createHandle(lineTo.getX(), lineTo.getY());
 
-                toggleHandlesVisibility(true, endHandle);
+                toggleHandlesVisibility(false, endHandle);
 
                 endHandle.setOnMouseDragged(e -> {
                     lineTo.setX(e.getX());
@@ -266,8 +268,8 @@ public class ResizingController {
         bottomRightHandle.setCenterY(rectangle.getY() + rectangle.getHeight());
     }
 
-    protected void toggleHandlesVisibility(boolean visible, javafx.scene.shape.Circle... handles) {
-        for (javafx.scene.shape.Circle handle : handles) {
+    protected void toggleHandlesVisibility(boolean visible, Circle... handles) {
+        for (Circle handle : handles) {
             handle.setVisible(visible);
         }
     }
@@ -277,6 +279,135 @@ public class ResizingController {
         if (handles != null) {
             drawController.contentGroup.getChildren().removeAll(handles);
             shapeHandlesMap.remove(shape);
+        }
+    }
+
+    protected void updateShapePosition(Shape shape) {
+        double deltaX = shape.getTranslateX();
+        double deltaY = shape.getTranslateY();
+
+        double[] oldCoordinates = getShapeCoordinates(shape);
+
+        if (shape instanceof Rectangle rect) {
+            rect.setX(rect.getX() + deltaX);
+            rect.setY(rect.getY() + deltaY);
+        } else if (shape instanceof Ellipse ellipse) {
+            ellipse.setCenterX(ellipse.getCenterX() + deltaX);
+            ellipse.setCenterY(ellipse.getCenterY() + deltaY);
+        } else if (shape instanceof Line line) {
+            line.setStartX(line.getStartX() + deltaX);
+            line.setStartY(line.getStartY() + deltaY);
+            line.setEndX(line.getEndX() + deltaX);
+            line.setEndY(line.getEndY() + deltaY);
+        } else if (shape instanceof Polygon polygon) {
+            ObservableList<Double> points = polygon.getPoints();
+            for (int i = 0; i < points.size(); i += 2) {
+                points.set(i, points.get(i) + deltaX);       // X
+                points.set(i + 1, points.get(i + 1) + deltaY); // Y
+            }
+        } else if (shape instanceof Path path) {
+            for (PathElement element : path.getElements()) {
+                if (element instanceof MoveTo moveTo) {
+                    moveTo.setX(moveTo.getX() + deltaX);
+                    moveTo.setY(moveTo.getY() + deltaY);
+                } else if (element instanceof LineTo lineTo) {
+                    lineTo.setX(lineTo.getX() + deltaX);
+                    lineTo.setY(lineTo.getY() + deltaY);
+                } else if (element instanceof QuadCurveTo quadCurveTo) {
+                    quadCurveTo.setControlX(quadCurveTo.getControlX() + deltaX);
+                    quadCurveTo.setControlY(quadCurveTo.getControlY() + deltaY);
+                    quadCurveTo.setX(quadCurveTo.getX() + deltaX);
+                    quadCurveTo.setY(quadCurveTo.getY() + deltaY);
+                }
+            }
+        }
+
+        shape.setTranslateX(0);
+        shape.setTranslateY(0);
+
+        double[] newCoordinates = getShapeCoordinates(shape);
+        historyController.addAction(
+                () -> {
+                    setShapeCoordinates(shape, oldCoordinates);
+                    removeHandlesFromShape(shape);
+                    enableResizing(shape);
+                },
+                () -> {
+                    setShapeCoordinates(shape, newCoordinates);
+                    removeHandlesFromShape(shape);
+                    enableResizing(shape);
+                }
+        );
+    }
+
+    private double[] getShapeCoordinates(Shape shape) {
+        if (shape instanceof Rectangle rect) {
+            return new double[]{rect.getX(), rect.getY()};
+        } else if (shape instanceof Ellipse ellipse) {
+            return new double[]{ellipse.getCenterX(), ellipse.getCenterY()};
+        } else if (shape instanceof Line line) {
+            return new double[]{line.getStartX(), line.getStartY(), line.getEndX(), line.getEndY()};
+        } else if (shape instanceof Polygon polygon) {
+            double[] points = new double[polygon.getPoints().size()];
+            for (int i = 0; i < points.length; i++) {
+                points[i] = polygon.getPoints().get(i);
+            }
+            return points;
+        } else if (shape instanceof Path path) {
+            List<Double> coords = new ArrayList<>();
+            for (PathElement element : path.getElements()) {
+                if (element instanceof MoveTo moveTo) {
+                    coords.add(moveTo.getX());
+                    coords.add(moveTo.getY());
+                } else if (element instanceof LineTo lineTo) {
+                    coords.add(lineTo.getX());
+                    coords.add(lineTo.getY());
+                } else if (element instanceof QuadCurveTo quadCurveTo) {
+                    coords.add(quadCurveTo.getControlX());
+                    coords.add(quadCurveTo.getControlY());
+                    coords.add(quadCurveTo.getX());
+                    coords.add(quadCurveTo.getY());
+                }
+            }
+            return coords.stream().mapToDouble(Double::doubleValue).toArray();
+        }
+        return new double[0];
+    }
+
+    private void setShapeCoordinates(Shape shape, double[] coords) {
+        if (shape instanceof Rectangle rect) {
+            rect.setX(coords[0]);
+            rect.setY(coords[1]);
+        } else if (shape instanceof Ellipse ellipse) {
+            ellipse.setCenterX(coords[0]);
+            ellipse.setCenterY(coords[1]);
+        } else if (shape instanceof Line line) {
+            line.setStartX(coords[0]);
+            line.setStartY(coords[1]);
+            line.setEndX(coords[2]);
+            line.setEndY(coords[3]);
+        } else if (shape instanceof Polygon polygon) {
+            ObservableList<Double> points = polygon.getPoints();
+            points.clear();
+            for (double coord : coords) {
+                points.add(coord);
+            }
+        } else if (shape instanceof Path path) {
+            int index = 0;
+            for (PathElement element : path.getElements()) {
+                if (element instanceof MoveTo moveTo) {
+                    moveTo.setX(coords[index++]);
+                    moveTo.setY(coords[index++]);
+                } else if (element instanceof LineTo lineTo) {
+                    lineTo.setX(coords[index++]);
+                    lineTo.setY(coords[index++]);
+                } else if (element instanceof QuadCurveTo quadCurveTo) {
+                    quadCurveTo.setControlX(coords[index++]);
+                    quadCurveTo.setControlY(coords[index++]);
+                    quadCurveTo.setX(coords[index++]);
+                    quadCurveTo.setY(coords[index++]);
+                }
+            }
         }
     }
 }

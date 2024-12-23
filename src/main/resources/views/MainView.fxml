@@ -41,6 +41,7 @@
             <Button fx:id="lineToolButton"/>
             <Button fx:id="curveToolButton"/>
             <Button fx:id="polygonToolButton"/>
+            <Button fx:id="textToolButton"/>
         </VBox>
     </left>
 

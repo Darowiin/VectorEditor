@@ -10,11 +10,12 @@ import javafx.scene.shape.*;
 import javafx.scene.Group;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Text;
+import javafx.scene.text.Font;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
 public class DrawController {
@@ -40,6 +41,8 @@ public class DrawController {
     private double selectionStartX, selectionStartY; // Координаты начала выделения
     protected double currentStrokeWidth = 2.0;
     private List<Shape> selectedShapes = new ArrayList<>();
+    private Text currentText; // Для хранения текущего текста
+    private boolean isEditingText = false; // Флаг редактирования текста
 
     public void initialize(Pane drawingArea, ToolController toolController, ColorController colorController, HistoryController historyController, ResizingController resizingController) {
         this.drawingArea = drawingArea;
@@ -52,6 +55,40 @@ public class DrawController {
         drawingArea.getChildren().add(contentGroup);
 
         activateDrawingHandlers();
+    }
+
+    private void addText(double x, double y) {
+        System.out.println("Adding text at: " + x + ", " + y);
+
+        currentText = new Text(x, y, "");
+        currentText.setFill(colorController.getCurrentColor());
+        currentText.setFont(Font.font(16));
+
+        drawingArea.setOnKeyTyped(event -> {
+            if (isEditingText && currentText != null) {
+                currentText.setText(currentText.getText() + event.getCharacter());
+            }
+        });
+
+        drawingArea.setOnKeyPressed(event -> {
+            if (isEditingText) {
+                if (event.getCode() == KeyCode.ENTER) {
+                    isEditingText = false;
+                    currentText = null;
+                    drawingArea.requestFocus();
+                    System.out.println("Text editing finished.");
+                } else if (event.getCode() == KeyCode.BACK_SPACE) {
+                    if (currentText != null && !currentText.getText().isEmpty()) {
+                        currentText.setText(currentText.getText().substring(0, currentText.getText().length() - 1));
+                    }
+                }
+            }
+        });
+        addShape(currentText);
+
+        isEditingText = true;
+        drawingArea.requestFocus();
+        System.out.println("Text added and focused.");
     }
 
     public void addShape(Shape shape) {
@@ -99,7 +136,13 @@ public class DrawController {
                 for (Shape shape : selectedShapes) {
                     initialPositions.put(shape, new Point2D(shape.getTranslateX(), shape.getTranslateY()));
                 }
-            } else if (currentTool == ToolMode.RECTANGLE || currentTool == ToolMode.ELLIPSE || currentTool == ToolMode.LINE || currentTool == ToolMode.CURVE || currentTool == ToolMode.POLYGON) {
+            } else if (currentTool == ToolMode.RECTANGLE ||
+                    currentTool == ToolMode.ELLIPSE ||
+                    currentTool == ToolMode.LINE ||
+                    currentTool == ToolMode.CURVE ||
+                    currentTool == ToolMode.POLYGON ||
+                    currentTool == ToolMode.TEXT
+            ) {
                 startX = localX;
                 startY = localY;
                 isDrawing = true;
@@ -144,6 +187,9 @@ public class DrawController {
                         addShape(currentPolygon);
                     }
                     currentPolygon.getPoints().addAll(localX, localY);
+                } else if (currentTool == ToolMode.TEXT) {
+                    addText(startX, startY);
+                    isEditingText = true;
                 }
                 markAsModified();
             }
@@ -166,6 +212,7 @@ public class DrawController {
                 double deltaY = event.getSceneY() - startY;
 
                 moveSelectedShapes(deltaX, deltaY);
+
                 startX = event.getSceneX();
                 startY = event.getSceneY();
                 markAsModified();
@@ -205,7 +252,7 @@ public class DrawController {
                 Bounds selectionBounds = selectionRectangle.getBoundsInParent();
                 selectedShapes.clear();
                 for (javafx.scene.Node node : contentGroup.getChildren()) {
-                    if (node instanceof Shape shape && shape.getBoundsInParent().intersects(selectionBounds)) {
+                    if (node instanceof Shape shape && shape.getBoundsInParent().intersects(selectionBounds) && !Objects.equals(node.getId(), "draggable-handle")) {
                         selectedShapes.add(shape);
                     }
                 }
@@ -218,28 +265,12 @@ public class DrawController {
                 finalPositions.clear();
                 for (Shape shape : selectedShapes) {
                     finalPositions.put(shape, new Point2D(shape.getTranslateX(), shape.getTranslateY()));
+
+                    resizingController.updateShapePosition(shape);
+                    resizingController.removeHandlesFromShape(shape);
+                    resizingController.enableResizing(shape);
                 }
 
-                historyController.addAction(
-                        () -> {
-                            for (Shape shape : initialPositions.keySet()) {
-                                Point2D position = initialPositions.get(shape);
-                                shape.setTranslateX(position.getX());
-                                shape.setTranslateY(position.getY());
-                                resizingController.removeHandlesFromShape(shape);
-                                resizingController.enableResizing(shape);
-                            }
-                        },
-                        () -> {
-                            for (Shape shape : finalPositions.keySet()) {
-                                Point2D position = finalPositions.get(shape);
-                                shape.setTranslateX(position.getX());
-                                shape.setTranslateY(position.getY());
-                                resizingController.removeHandlesFromShape(shape);
-                                resizingController.enableResizing(shape);
-                            }
-                        }
-                );
                 selectedShapes.clear();
                 markAsModified();
             } else if (isDrawing) {

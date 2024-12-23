@@ -9,5 +9,6 @@ public enum ToolMode {
     LINE,
     CURVE,
     POLYGON,
+    TEXT,
     EYEDROPPER
 }
