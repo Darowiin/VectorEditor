@@ -86,6 +86,7 @@ public class FileController {
                 data.setY(text.getY());
                 data.setTextContent(text.getText());
                 data.setFontSize(text.getFont().getSize());
+                data.setFontWeight(text.getFont().getStyle());
                 data.setTextColor(text.getFill().toString());
                 shapeDataList.add(data);
             } else if (node instanceof TextArea textArea) {
@@ -199,6 +200,7 @@ public class FileController {
                         Text text = new Text(data.getX(), data.getY(), data.getTextContent());
                         text.setFont(Font.font(data.getFontSize()));
                         text.setFill(Color.web(data.getTextColor()));
+                        text.setFont(Font.font("Arial", data.getFontWeight(), data.getFontSize()));
                         drawController.getContentGroup().getChildren().add(text);
                         break;
                     case "textarea":
@@ -310,13 +312,24 @@ public class FileController {
                 ));
             } else if (node instanceof Text text) {
                 String fillColor = text.getFill() == null || text.getFill().equals(Color.TRANSPARENT)
-                        ? "none"
+                        ? "#000000"
                         : toHexString((Color) text.getFill());
+                String fontStyle = text.getFont().getStyle();
+
+                String fontWeightString;
+                if (fontStyle.contains("Light")) {
+                    fontWeightString = "light";
+                } else if (fontStyle.contains("Bold")) {
+                    fontWeightString = "bold";
+                } else {
+                    fontWeightString = "normal";
+                }
                 svgContent.append(String.format(Locale.US,
-                        "<text x=\"%.2f\" y=\"%.2f\" font-size=\"%.2f\" fill=\"%s\" >%s</text>\n",
+                        "<text x=\"%.2f\" y=\"%.2f\" font-size=\"%.2f\" font-weight=\"%s\" fill=\"%s\" >%s</text>\n",
                         text.getX(),
                         text.getY(),
                         text.getFont().getSize(),
+                        fontWeightString,
                         fillColor,
                         text.getText()
                 ));
@@ -339,13 +352,10 @@ public class FileController {
         );
     }
 
-    public void loadFromSvg(InputStreamReader reader) throws IOException, ParseException {
+    public void loadFromSvg(File file) throws IOException, ParseException {
         String parser = XMLResourceDescriptor.getXMLParserClassName();
         SAXSVGDocumentFactory factory = new SAXSVGDocumentFactory(parser);
-
-        InputSource inputSource = new InputSource(reader);
-
-        Document doc = factory.createDocument(null, inputSource.getByteStream());
+        Document doc = factory.createDocument(file.toURI().toString());
 
         drawController.getContentGroup().getChildren().clear();
         NodeList elements = doc.getDocumentElement().getChildNodes();
@@ -364,7 +374,8 @@ public class FileController {
                     (Objects.equals(element.getTagName(), "ellipse")) ||
                     (Objects.equals(element.getTagName(), "path")) ||
                     (Objects.equals(element.getTagName(), "polygon")) ||
-                    (Objects.equals(element.getTagName(), "text"))) {
+                    (Objects.equals(element.getTagName(), "text")))
+            {
                 String fillAttribute = element.getAttribute("fill");
                 fillColor = "none".equals(fillAttribute) ? Color.TRANSPARENT : Color.web(fillAttribute);
             }
@@ -374,7 +385,8 @@ public class FileController {
                     ? null
                     : Color.web(strokeAttribute);
 
-            double strokeWidth = Double.parseDouble(element.getAttribute("stroke-width"));
+            String strokeWidthAttribute = element.getAttribute("stroke-width");
+            double strokeWidth = strokeWidthAttribute == null || strokeWidthAttribute.isEmpty() ? 0.0 : Double.parseDouble(strokeWidthAttribute);
 
             switch (element.getTagName()) {
                 case "rect":
@@ -448,22 +460,24 @@ public class FileController {
                     break;
 
                 case "text":
-                    Text text = new Text(
-                            parseDouble(element.getAttribute("x")),
-                            parseDouble(element.getAttribute("y")),
-                            element.getTextContent()
-                    );
-                    String fontFamily = element.getAttribute("font-family");
-                    String fontWeight = element.getAttribute("font-weight");
+                    double x = parseDouble(element.getAttribute("x"));
+                    double y = parseDouble(element.getAttribute("y"));
 
-                    if (fontFamily != null && !fontFamily.isEmpty()) {
-                        text.setFont(Font.font(fontFamily, fontWeight != null && fontWeight.equals("bold") ? FontWeight.BOLD : FontWeight.NORMAL, parseDouble(element.getAttribute("font-size"))));
-                    } else {
-                        text.setFont(Font.font(parseDouble(element.getAttribute("font-size"))));
-                    }
+                    String textContent = element.getTextContent().trim();
+
+                    Text text = new Text(x, y, textContent);
+
+                    String fontWeight = element.getAttribute("font-weight");
+                    FontWeight weight = parseFontWeight(fontWeight);
+
+                    double fontSize = parseDouble(element.getAttribute("font-size"));
+                    text.setFont(Font.font("Arial", weight, fontSize));
+
+                    String fillAttribute = element.getAttribute("fill");
+                    fillColor = "none".equals(fillAttribute) ? Color.BLACK : Color.web(fillAttribute);
                     text.setFill(fillColor);
+
                     drawController.getContentGroup().getChildren().add(text);
-                    resizingController.enableResizing(text);
                     break;
 
                 case "g": // Группа
@@ -474,6 +488,25 @@ public class FileController {
                     break;
             }
         }
+    }
+
+    private FontWeight parseFontWeight(String fontWeight) {
+        if (fontWeight == null || fontWeight.isEmpty()) {
+            return FontWeight.NORMAL;
+        }
+
+        return switch (fontWeight.toLowerCase()) {
+            case "100", "thin" -> FontWeight.THIN;
+            case "200", "extra-light", "ultra-light" -> FontWeight.EXTRA_LIGHT;
+            case "300", "light" -> FontWeight.LIGHT;
+            case "400", "normal" -> FontWeight.NORMAL;
+            case "500", "medium" -> FontWeight.MEDIUM;
+            case "600", "semi-bold", "demi-bold" -> FontWeight.SEMI_BOLD;
+            case "700", "bold" -> FontWeight.BOLD;
+            case "800", "extra-bold", "ultra-bold" -> FontWeight.EXTRA_BOLD;
+            case "900", "black", "heavy" -> FontWeight.BLACK;
+            default -> FontWeight.NORMAL;
+        };
     }
 
     private double parseDouble(String value) throws NumberFormatException, ParseException {

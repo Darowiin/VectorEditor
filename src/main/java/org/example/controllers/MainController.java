@@ -13,6 +13,7 @@ import javafx.scene.paint.Paint;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Shape;
 import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.stage.FileChooser;
 
 import javafx.stage.WindowEvent;
@@ -60,6 +61,7 @@ public class MainController {
     @FXML private Slider strokeWidthSlider;
     @FXML private Label strokeWidthValueLabel;
     @FXML private ComboBox<String> fontSize;
+    @FXML private ComboBox<String> fontWeight;
     @FXML private Button eyedropperToolButton;
 
     @FXML private ScrollPane drawingScrollPane;
@@ -81,6 +83,7 @@ public class MainController {
     private static final double MIN_SCALE = 1.0; // Минимальный масштаб
     private boolean isEyedropperActive = false;
     protected static double fontSizeValue = 16.0;
+    protected static FontWeight fontWeightValue = FontWeight.NORMAL;
 
     private final EventHandler<WindowEvent> closeEventHandler = event -> {
         if (DrawController.isModified()) {
@@ -202,7 +205,11 @@ public class MainController {
             String newValue = fontSize.getSelectionModel().getSelectedItem();
             fontSizeValue = Double.parseDouble(newValue);
         });
-
+        fontWeight.getSelectionModel().select(1);
+        fontWeight.setOnAction(event -> {
+            String newValue = fontWeight.getSelectionModel().getSelectedItem();
+            fontWeightValue = FontWeight.valueOf(newValue.toUpperCase());
+        });
         Rectangle clip = new Rectangle();
         clip.widthProperty().bind(drawingArea.widthProperty());
         clip.heightProperty().bind(drawingArea.heightProperty());
@@ -430,12 +437,12 @@ public class MainController {
         // Показ диалогового окна выбора файла
         File file = fileChooser.showOpenDialog(drawingArea.getScene().getWindow());
         if (file != null) {
-            try (InputStreamReader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
+            try {
                 String fileName = file.getName().toLowerCase();
                 if (fileName.endsWith(".json")) {
                     fileController.loadFromJSON(file);
                 } else if (fileName.endsWith(".svg")) {
-                    fileController.loadFromSvg(reader);
+                    fileController.loadFromSvg(file);
                 } else {
                     throw new IllegalArgumentException("Unsupported file format: " + file.getName());
                 }

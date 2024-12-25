@@ -94,6 +94,16 @@
                     </FXCollections>
                 </items>
             </ComboBox>
+            <Label text="Font Weight" style="-fx-font-weight: bold;" />
+            <ComboBox fx:id="fontWeight">
+                <items>
+                    <FXCollections fx:factory="observableArrayList">
+                        <String fx:value="Light" />
+                        <String fx:value="Normal" />
+                        <String fx:value="Bold" />
+                    </FXCollections>
+                </items>
+            </ComboBox>
         </VBox>
     </right>
 

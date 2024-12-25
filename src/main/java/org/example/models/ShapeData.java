@@ -1,5 +1,8 @@
 package org.example.models;
 
+import javafx.scene.text.FontWeight;
+
+import java.awt.*;
 import java.util.List;
 
 public class ShapeData {
@@ -20,6 +23,7 @@ public class ShapeData {
     private String textContent;
     private double fontSize;
     private String textColor;
+    private FontWeight fontWeight;
 
     // Геттеры и сеттеры
     public String getType() {
@@ -115,5 +119,20 @@ public class ShapeData {
     }
     public void setTextColor(String textColor) {
         this.textColor = textColor;
+    }
+    public FontWeight getFontWeight() {
+        return fontWeight;
+    }
+    public void setFontWeight(String fontWeight) {
+        if (fontWeight == null || fontWeight.isEmpty()) {
+            this.fontWeight =  FontWeight.NORMAL;
+        }
+
+        switch (fontWeight.toLowerCase()) {
+            case "300", "light" -> this.fontWeight = FontWeight.LIGHT;
+            case "400", "normal" -> this.fontWeight = FontWeight.NORMAL;
+            case "700", "bold" -> this.fontWeight = FontWeight.BOLD;
+            default -> this.fontWeight = FontWeight.NORMAL;
+        };
     }
 }

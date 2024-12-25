@@ -4,6 +4,7 @@ import javafx.collections.ObservableList;
 import javafx.scene.Cursor;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.*;
+import javafx.scene.text.Text;
 import org.example.enums.ToolMode;
 
 import java.util.ArrayList;
@@ -320,6 +321,9 @@ public class ResizingController {
                     quadCurveTo.setY(quadCurveTo.getY() + deltaY);
                 }
             }
+        } else if (shape instanceof Text text) {
+            text.setX(text.getX() + deltaX);
+            text.setY(text.getY() + deltaY);
         }
 
         shape.setTranslateX(0);

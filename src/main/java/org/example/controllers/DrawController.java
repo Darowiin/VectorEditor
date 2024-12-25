@@ -6,6 +6,7 @@ import javafx.geometry.Point2D;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextArea;
 import javafx.scene.input.KeyCode;
+import javafx.scene.text.FontWeight;
 import org.example.enums.ToolMode;
 
 import javafx.fxml.FXML;
@@ -73,6 +74,9 @@ public class DrawController {
 
         textArea.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.ESCAPE) {
+                if (textArea.getText().length() == 0) {
+                    contentGroup.getChildren().remove(textArea);
+                }
                 finalizeTextArea(x, y, textArea);
             }
         });
@@ -89,8 +93,9 @@ public class DrawController {
 
         String text = textArea.getText();
         Text displayText = new Text(x, y, text);
-        displayText.setFill(colorController.getFillColor());
-        displayText.setFont(Font.font(MainController.fontSizeValue));
+        if (colorController.getFillColor() != Color.TRANSPARENT) displayText.setFill(colorController.getFillColor());
+        else displayText.setFill(Color.BLACK);
+        displayText.setFont(Font.font("Arial", MainController.fontWeightValue, MainController.fontSizeValue));
 
         contentGroup.getChildren().add(displayText);
 
