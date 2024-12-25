@@ -137,6 +137,14 @@ public class FileController {
                 data.setStrokeWidth(path.getStrokeWidth());
                 data.setFillColor(path.getFill().toString());
                 shapeDataList.add(data);
+            } else if (node instanceof Polyline polyline) {
+                ShapeData data = new ShapeData();
+                data.setType("polyline");
+                data.setPoints(new ArrayList<>(polyline.getPoints()));
+                data.setStrokeColor(polyline.getStroke().toString());
+                data.setStrokeWidth(polyline.getStrokeWidth());
+                data.setFillColor("none");
+                shapeDataList.add(data);
             } else if (node instanceof Circle) {
                 continue;
             }
@@ -195,6 +203,15 @@ public class FileController {
                         polygon.setFill(Color.web(data.getFillColor()));
                         drawController.getContentGroup().getChildren().add(polygon);
                         resizingController.enableResizing(polygon);
+                        break;
+                    case "polyline":
+                        Polyline polyline = new Polyline();
+                        polyline.getPoints().addAll(data.getPoints());
+                        polyline.setStroke(Color.web(data.getStrokeColor()));
+                        polyline.setStrokeWidth(data.getStrokeWidth());
+                        polyline.setFill(Color.TRANSPARENT);
+                        drawController.getContentGroup().getChildren().add(polyline);
+                        resizingController.enableResizing(polyline);
                         break;
                     case "text":
                         Text text = new Text(data.getX(), data.getY(), data.getTextContent());
@@ -309,6 +326,17 @@ public class FileController {
                         toHexString((Color) path.getStroke()),
                         path.getStrokeWidth(),
                         fillColor
+                ));
+            } else if (node instanceof Polyline polyline) {
+                StringBuilder pointsData = new StringBuilder();
+                for (int i = 0; i < polyline.getPoints().size(); i += 2) {
+                    pointsData.append(String.format(Locale.US, "%.2f,%.2f ", polyline.getPoints().get(i), polyline.getPoints().get(i + 1)));
+                }
+                svgContent.append(String.format(Locale.US,
+                        "<polyline points=\"%s\" stroke=\"%s\" stroke-width=\"%.2f\" fill=\"none\" />\n",
+                        pointsData.toString().trim(),
+                        toHexString((Color) polyline.getStroke()),
+                        polyline.getStrokeWidth()
                 ));
             } else if (node instanceof Text text) {
                 String fillColor = text.getFill() == null || text.getFill().equals(Color.TRANSPARENT)
@@ -457,6 +485,23 @@ public class FileController {
                     polygon.setFill(fillColor);
                     drawController.getContentGroup().getChildren().add(polygon);
                     resizingController.enableResizing(polygon);
+                    break;
+                case "polyline":
+                    String polylinePoints = element.getAttribute("points");
+                    Polyline polyline = new Polyline();
+                    String[] polylinePointsArray = polylinePoints.split("\\s+");
+                    for (String point : polylinePointsArray) {
+                        String[] coordinates = point.split(",");
+                        if (coordinates.length == 2) {
+                            polyline.getPoints().add(parseDouble(coordinates[0]));
+                            polyline.getPoints().add(parseDouble(coordinates[1]));
+                        }
+                    }
+                    polyline.setStroke(strokeColor);
+                    polyline.setStrokeWidth(strokeWidth);
+                    polyline.setFill(Color.TRANSPARENT);
+                    drawController.getContentGroup().getChildren().add(polyline);
+                    resizingController.enableResizing(polyline);
                     break;
 
                 case "text":

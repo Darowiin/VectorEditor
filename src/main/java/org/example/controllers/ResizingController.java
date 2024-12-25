@@ -38,6 +38,8 @@ public class ResizingController {
             enableCurveResizing((Path) shape, handles);
         } else if (shape instanceof Polygon) {
             enablePolygonResizing((Polygon) shape, handles);
+        } else if (shape instanceof Polyline) {
+            enablePolylineResizing((Polyline) shape, handles);
         }
 
         shapeHandlesMap.put(shape, handles);
@@ -51,6 +53,33 @@ public class ResizingController {
             }
         });
         drawController.contentGroup.getChildren().addAll(handles);
+    }
+
+    protected void enablePolylineResizing(Polyline shape, List<Circle> handles) {
+        ObservableList<Double> points = shape.getPoints();
+
+        for (int i = 0; i < points.size(); i += 2) {
+            double x = points.get(i);
+            double y = points.get(i + 1);
+
+            Circle handle = createHandle(x, y);
+
+            final int index = i;
+
+            handle.setOnMouseDragged(event -> {
+                double newX = event.getX();
+                double newY = event.getY();
+
+                points.set(index, newX);
+                points.set(index + 1, newY);
+
+                handle.setCenterX(newX);
+                handle.setCenterY(newY);
+            });
+
+            toggleHandlesVisibility(false, handle);
+            handles.add(handle);
+        }
     }
 
     private void enablePolygonResizing(Polygon shape, List<Circle> handles) {
@@ -306,6 +335,12 @@ public class ResizingController {
                 points.set(i, points.get(i) + deltaX);       // X
                 points.set(i + 1, points.get(i + 1) + deltaY); // Y
             }
+        } else if (shape instanceof Polyline polyline) {
+            ObservableList<Double> points = polyline.getPoints();
+            for (int i = 0; i < points.size(); i += 2) {
+                points.set(i, points.get(i) + deltaX);       // X
+                points.set(i + 1, points.get(i + 1) + deltaY); // Y
+            }
         } else if (shape instanceof Path path) {
             for (PathElement element : path.getElements()) {
                 if (element instanceof MoveTo moveTo) {
@@ -374,6 +409,12 @@ public class ResizingController {
                 }
             }
             return coords.stream().mapToDouble(Double::doubleValue).toArray();
+        } else if (shape instanceof Polyline polyline) {
+            double[] points = new double[polyline.getPoints().size()];
+            for (int i = 0; i < points.length; i++) {
+                points[i] = polyline.getPoints().get(i);
+            }
+            return points;
         }
         return new double[0];
     }
@@ -411,6 +452,12 @@ public class ResizingController {
                     quadCurveTo.setX(coords[index++]);
                     quadCurveTo.setY(coords[index++]);
                 }
+            }
+        } else if (shape instanceof Polyline polyline) {
+            ObservableList<Double> points = polyline.getPoints();
+            points.clear();
+            for (double coord : coords) {
+                points.add(coord);
             }
         }
     }

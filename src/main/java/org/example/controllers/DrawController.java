@@ -1,6 +1,7 @@
 package org.example.controllers;
 
 import javafx.application.Platform;
+import javafx.collections.ObservableList;
 import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
 import javafx.scene.control.ComboBox;
@@ -35,6 +36,7 @@ public class DrawController {
     private Line currentLine;
     private Path currentCurve;
     private Polygon currentPolygon;
+    private Polyline currentPolyline;
 
     private double startX, startY;
     private static boolean isModified = false;
@@ -166,7 +168,8 @@ public class DrawController {
                     currentTool == ToolMode.LINE ||
                     currentTool == ToolMode.CURVE ||
                     currentTool == ToolMode.POLYGON ||
-                    currentTool == ToolMode.TEXT
+                    currentTool == ToolMode.TEXT ||
+                    currentTool == ToolMode.POLYLINE
             ) {
                 startX = localX;
                 startY = localY;
@@ -202,7 +205,7 @@ public class DrawController {
                     if (event.isSecondaryButtonDown()) {
                         resizingController.enableResizing(currentPolygon);
                         currentPolygon = null;
-
+                        return;
                     } else if (currentPolygon == null) {
                         currentPolygon = new Polygon();
                         currentPolygon.setStroke(colorController.getCurrentColor());
@@ -215,6 +218,24 @@ public class DrawController {
                 } else if (currentTool == ToolMode.TEXT) {
                     addTextArea(startX, startY);
                     isEditingText = true;
+                } else if (currentTool == ToolMode.POLYLINE) {
+                    if (event.isSecondaryButtonDown()) {
+                        resizingController.enableResizing(currentPolyline);
+                        currentPolyline = null;
+                        return;
+                    } else if (currentPolyline == null) {
+                        currentPolyline = new Polyline();
+                        currentPolyline.setStroke(colorController.getCurrentColor());
+                        currentPolyline.setStrokeWidth(currentStrokeWidth);
+                        currentPolyline.setFill(Color.TRANSPARENT);
+                        addShape(currentPolyline);
+                        isDrawing = true;
+                    }
+                    currentPolyline.getPoints().addAll(startX, startY);
+
+                    if (currentPolyline.getPoints().size() == 2) {
+                        currentPolyline.getPoints().addAll(startX, startY);
+                    }
                 }
                 markAsModified();
             }
@@ -268,6 +289,14 @@ public class DrawController {
                         currentPolygon.getPoints().set(size - 2, localX);
                         currentPolygon.getPoints().set(size - 1, localY);
                     }
+                } else if (currentPolyline != null) {
+                    ObservableList<Double> points = currentPolyline.getPoints();
+                    int size = points.size();
+
+                    if (size >= 2) {
+                        points.set(size - 2, localX);
+                        points.set(size - 1, localY);
+                    }
                 }
             }
         });
@@ -315,6 +344,9 @@ public class DrawController {
                 } else if (currentPolygon != null && event.getClickCount() == 2) {
                     resizingController.enableResizing(currentPolygon);
                     currentPolygon = null;
+                } else if (currentPolyline != null && event.getClickCount() == 2) {
+                    resizingController.enableResizing(currentPolyline);
+                    currentPolyline = null;
                 }
                 markAsModified();
             }

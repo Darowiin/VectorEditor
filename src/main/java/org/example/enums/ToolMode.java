@@ -10,5 +10,6 @@ public enum ToolMode {
     CURVE,
     POLYGON,
     TEXT,
+    POLYLINE,
     EYEDROPPER
 }

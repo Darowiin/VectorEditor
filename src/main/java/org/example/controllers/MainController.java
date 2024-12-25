@@ -50,6 +50,7 @@ public class MainController {
     @FXML private Button lineToolButton;
     @FXML private Button curveToolButton;
     @FXML private Button polygonToolButton;
+    @FXML private Button polylineToolButton;
     @FXML private Button textToolButton;
     @FXML private Button colorBlack;
     @FXML private Button colorRed;
@@ -161,6 +162,10 @@ public class MainController {
         polygonToolButton.setOnAction(event -> {
             toolController.setCurrentTool(ToolMode.POLYGON);
             statusBar.setText("Tool: Polygon");
+        });
+        polylineToolButton.setOnAction(event -> {
+            toolController.setCurrentTool(ToolMode.POLYLINE);
+            statusBar.setText("Tool: Polyline");
         });
         textToolButton.setOnAction(event -> {
             toolController.setCurrentTool(ToolMode.TEXT);
@@ -379,9 +384,14 @@ public class MainController {
         curveToolButton.setTooltip(curveTooltip);
 
         polygonToolButton.setGraphic(createImageView("polygon.png"));
-        Tooltip polygonTooltip = new Tooltip("Ломаная");
+        Tooltip polygonTooltip = new Tooltip("Многоугольник");
         polygonTooltip.setShowDelay(Duration.millis(200));
         polygonToolButton.setTooltip(polygonTooltip);
+
+        polylineToolButton.setGraphic(createImageView("polyline.png"));
+        Tooltip polylineTooltip = new Tooltip("Ломаная");
+        polylineTooltip.setShowDelay(Duration.millis(200));
+        polylineToolButton.setTooltip(polylineTooltip);
 
         textToolButton.setGraphic(createImageView("text.png"));
         Tooltip textTooltip = new Tooltip("Текст");
