@@ -4,13 +4,18 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.SnapshotParameters;
+import javafx.scene.control.TextArea;
 import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.*;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
 import org.apache.batik.anim.dom.SAXSVGDocumentFactory;
 import org.apache.batik.util.XMLResourceDescriptor;
 import org.example.models.PathElementParser;
 import org.example.models.ShapeData;
+import org.w3c.css.sac.InputSource;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -20,6 +25,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.ParseException;
@@ -72,6 +78,26 @@ public class FileController {
                 data.setStrokeColor(line.getStroke().toString());
                 data.setStrokeWidth(line.getStrokeWidth());
                 data.setFillColor("none");
+                shapeDataList.add(data);
+            } else if (node instanceof Text text) {
+                ShapeData data = new ShapeData();
+                data.setType("text");
+                data.setX(text.getX());
+                data.setY(text.getY());
+                data.setTextContent(text.getText());
+                data.setFontSize(text.getFont().getSize());
+                data.setTextColor(text.getFill().toString());
+                shapeDataList.add(data);
+            } else if (node instanceof TextArea textArea) {
+                ShapeData data = new ShapeData();
+                data.setType("textarea");
+                data.setX(textArea.getLayoutX());
+                data.setY(textArea.getLayoutY());
+                data.setWidth(textArea.getPrefWidth());
+                data.setHeight(textArea.getPrefHeight());
+                data.setTextContent(textArea.getText());
+                data.setFontSize(textArea.getFont().getSize());
+                data.setTextColor(textArea.getStyle());
                 shapeDataList.add(data);
             } else if (node instanceof Polygon polygon) {
                 ShapeData data = new ShapeData();
@@ -169,12 +195,28 @@ public class FileController {
                         drawController.getContentGroup().getChildren().add(polygon);
                         resizingController.enableResizing(polygon);
                         break;
+                    case "text":
+                        Text text = new Text(data.getX(), data.getY(), data.getTextContent());
+                        text.setFont(Font.font(data.getFontSize()));
+                        text.setFill(Color.web(data.getTextColor()));
+                        drawController.getContentGroup().getChildren().add(text);
+                        break;
+                    case "textarea":
+                        TextArea textArea = new TextArea(data.getTextContent());
+                        textArea.setLayoutX(data.getX());
+                        textArea.setLayoutY(data.getY());
+                        textArea.setPrefWidth(data.getWidth());
+                        textArea.setPrefHeight(data.getHeight());
+                        textArea.setFont(Font.font(data.getFontSize()));
+                        textArea.setStyle(data.getTextColor());
+                        drawController.getContentGroup().getChildren().add(textArea);
+                        break;
                 }
             }
         }
     }
 
-    public void saveToSvg(File file) throws IOException {
+    public void saveToSvg(File file) throws IOException, ParseException {
         StringBuilder svgContent = new StringBuilder();
 
         svgContent.append("<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\">\n");
@@ -266,6 +308,18 @@ public class FileController {
                         path.getStrokeWidth(),
                         fillColor
                 ));
+            } else if (node instanceof Text text) {
+                String fillColor = text.getFill() == null || text.getFill().equals(Color.TRANSPARENT)
+                        ? "none"
+                        : toHexString((Color) text.getFill());
+                svgContent.append(String.format(Locale.US,
+                        "<text x=\"%.2f\" y=\"%.2f\" font-size=\"%.2f\" fill=\"%s\" >%s</text>\n",
+                        text.getX(),
+                        text.getY(),
+                        text.getFont().getSize(),
+                        fillColor,
+                        text.getText()
+                ));
             }
         }
 
@@ -285,10 +339,13 @@ public class FileController {
         );
     }
 
-    public void loadFromSvg(File file) throws IOException, ParseException {
+    public void loadFromSvg(InputStreamReader reader) throws IOException, ParseException {
         String parser = XMLResourceDescriptor.getXMLParserClassName();
         SAXSVGDocumentFactory factory = new SAXSVGDocumentFactory(parser);
-        Document doc = factory.createDocument(file.toURI().toString());
+
+        InputSource inputSource = new InputSource(reader);
+
+        Document doc = factory.createDocument(null, inputSource.getByteStream());
 
         drawController.getContentGroup().getChildren().clear();
         NodeList elements = doc.getDocumentElement().getChildNodes();
@@ -306,7 +363,8 @@ public class FileController {
             if ((Objects.equals(element.getTagName(), "rect")) ||
                     (Objects.equals(element.getTagName(), "ellipse")) ||
                     (Objects.equals(element.getTagName(), "path")) ||
-                    (Objects.equals(element.getTagName(), "polygon"))) {
+                    (Objects.equals(element.getTagName(), "polygon")) ||
+                    (Objects.equals(element.getTagName(), "text"))) {
                 String fillAttribute = element.getAttribute("fill");
                 fillColor = "none".equals(fillAttribute) ? Color.TRANSPARENT : Color.web(fillAttribute);
             }
@@ -387,6 +445,25 @@ public class FileController {
                     polygon.setFill(fillColor);
                     drawController.getContentGroup().getChildren().add(polygon);
                     resizingController.enableResizing(polygon);
+                    break;
+
+                case "text":
+                    Text text = new Text(
+                            parseDouble(element.getAttribute("x")),
+                            parseDouble(element.getAttribute("y")),
+                            element.getTextContent()
+                    );
+                    String fontFamily = element.getAttribute("font-family");
+                    String fontWeight = element.getAttribute("font-weight");
+
+                    if (fontFamily != null && !fontFamily.isEmpty()) {
+                        text.setFont(Font.font(fontFamily, fontWeight != null && fontWeight.equals("bold") ? FontWeight.BOLD : FontWeight.NORMAL, parseDouble(element.getAttribute("font-size"))));
+                    } else {
+                        text.setFont(Font.font(parseDouble(element.getAttribute("font-size"))));
+                    }
+                    text.setFill(fillColor);
+                    drawController.getContentGroup().getChildren().add(text);
+                    resizingController.enableResizing(text);
                     break;
 
                 case "g": // Группа

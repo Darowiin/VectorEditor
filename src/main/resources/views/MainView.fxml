@@ -4,6 +4,8 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.shape.*?>
 
+<?import javafx.collections.FXCollections?>
+<?import java.lang.String?>
 <BorderPane xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.controllers.MainController">
     <!-- Верхнее меню -->
     <top>
@@ -77,6 +79,21 @@
             <Label text="Stroke Width" style="-fx-font-weight: bold;" />
             <Slider fx:id="strokeWidthSlider" min="1" max="10" value="2" blockIncrement="1" />
             <Label fx:id="strokeWidthValueLabel" text="2.0" style="-fx-alignment: center;" />
+            <Label text="Font Size" style="-fx-font-weight: bold;" />
+            <ComboBox fx:id="fontSize">
+                <items>
+                    <FXCollections fx:factory="observableArrayList">
+                        <String fx:value="12" />
+                        <String fx:value="14" />
+                        <String fx:value="16" />
+                        <String fx:value="18" />
+                        <String fx:value="20" />
+                        <String fx:value="24" />
+                        <String fx:value="28" />
+                        <String fx:value="32" />
+                    </FXCollections>
+                </items>
+            </ComboBox>
         </VBox>
     </right>
 

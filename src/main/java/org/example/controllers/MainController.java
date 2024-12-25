@@ -12,6 +12,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.paint.Paint;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Shape;
+import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
 
 import javafx.stage.WindowEvent;
@@ -19,7 +20,10 @@ import javafx.util.Duration;
 import org.example.enums.ToolMode;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.Objects;
 import java.util.Optional;
@@ -55,6 +59,7 @@ public class MainController {
     @FXML private ColorPicker fillColorPicker;
     @FXML private Slider strokeWidthSlider;
     @FXML private Label strokeWidthValueLabel;
+    @FXML private ComboBox<String> fontSize;
     @FXML private Button eyedropperToolButton;
 
     @FXML private ScrollPane drawingScrollPane;
@@ -75,6 +80,7 @@ public class MainController {
     private static final double MAX_SCALE = 5.0; // Максимальный масштаб
     private static final double MIN_SCALE = 1.0; // Минимальный масштаб
     private boolean isEyedropperActive = false;
+    protected static double fontSizeValue = 16.0;
 
     private final EventHandler<WindowEvent> closeEventHandler = event -> {
         if (DrawController.isModified()) {
@@ -191,6 +197,11 @@ public class MainController {
         drawController.initialize(drawingArea, toolController, colorController, historyController, resizingController);
         resizingController.initialize(toolController,drawController, historyController);
         fileController.initialize(drawController, resizingController);
+        fontSize.getSelectionModel().select(2);
+        fontSize.setOnAction(event -> {
+            String newValue = fontSize.getSelectionModel().getSelectedItem();
+            fontSizeValue = Double.parseDouble(newValue);
+        });
 
         Rectangle clip = new Rectangle();
         clip.widthProperty().bind(drawingArea.widthProperty());
@@ -419,12 +430,12 @@ public class MainController {
         // Показ диалогового окна выбора файла
         File file = fileChooser.showOpenDialog(drawingArea.getScene().getWindow());
         if (file != null) {
-            try {
+            try (InputStreamReader reader = new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8)) {
                 String fileName = file.getName().toLowerCase();
                 if (fileName.endsWith(".json")) {
                     fileController.loadFromJSON(file);
                 } else if (fileName.endsWith(".svg")) {
-                    fileController.loadFromSvg(file);
+                    fileController.loadFromSvg(reader);
                 } else {
                     throw new IllegalArgumentException("Unsupported file format: " + file.getName());
                 }
@@ -465,6 +476,8 @@ public class MainController {
                 statusBar.setText("File saved: " + file.getName());
             } catch (IOException | IllegalArgumentException e) {
                 statusBar.setText("Failed to save file: " + e.getMessage());
+            } catch (ParseException e) {
+                throw new RuntimeException(e);
             }
         }
     }

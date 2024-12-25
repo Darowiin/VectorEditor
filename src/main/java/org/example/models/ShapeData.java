@@ -17,6 +17,9 @@ public class ShapeData {
     private double strokeWidth;
     private String pathData;
     private List<Double> points;
+    private String textContent;
+    private double fontSize;
+    private String textColor;
 
     // Геттеры и сеттеры
     public String getType() {
@@ -89,12 +92,28 @@ public class ShapeData {
     }
     public String getPathData() { return pathData; }
     public void setPathData(String pathData) { this.pathData = pathData; }
-
     public List<Double> getPoints() {
         return points;
     }
-
     public void setPoints(List<Double> points) {
         this.points = points;
+    }
+    public String getTextContent() {
+        return textContent;
+    }
+    public void setTextContent(String textContent) {
+        this.textContent = textContent;
+    }
+    public double getFontSize() {
+        return fontSize;
+    }
+    public void setFontSize(double fontSize) {
+        this.fontSize = fontSize;
+    }
+    public String getTextColor() {
+        return textColor;
+    }
+    public void setTextColor(String textColor) {
+        this.textColor = textColor;
     }
 }

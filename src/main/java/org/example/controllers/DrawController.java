@@ -1,7 +1,11 @@
 package org.example.controllers;
 
+import javafx.application.Platform;
 import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.TextArea;
+import javafx.scene.input.KeyCode;
 import org.example.enums.ToolMode;
 
 import javafx.fxml.FXML;
@@ -12,8 +16,6 @@ import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Text;
 import javafx.scene.text.Font;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
 
 import java.util.*;
 
@@ -41,7 +43,6 @@ public class DrawController {
     private double selectionStartX, selectionStartY; // Координаты начала выделения
     protected double currentStrokeWidth = 2.0;
     private List<Shape> selectedShapes = new ArrayList<>();
-    private Text currentText; // Для хранения текущего текста
     private boolean isEditingText = false; // Флаг редактирования текста
 
     public void initialize(Pane drawingArea, ToolController toolController, ColorController colorController, HistoryController historyController, ResizingController resizingController) {
@@ -57,38 +58,57 @@ public class DrawController {
         activateDrawingHandlers();
     }
 
-    private void addText(double x, double y) {
-        System.out.println("Adding text at: " + x + ", " + y);
+    private void addTextArea(double x, double y) {
+        TextArea textArea = new TextArea();
+        textArea.setLayoutX(x);
+        textArea.setLayoutY(y);
+        textArea.setPrefWidth(300);
+        textArea.setPrefHeight(100);
+        textArea.setWrapText(true);
 
-        currentText = new Text(x, y, "");
-        currentText.setFill(colorController.getCurrentColor());
-        currentText.setFont(Font.font(16));
+        textArea.setFont(Font.font(MainController.fontSizeValue));
 
-        drawingArea.setOnKeyTyped(event -> {
-            if (isEditingText && currentText != null) {
-                currentText.setText(currentText.getText() + event.getCharacter());
+        contentGroup.getChildren().add(textArea);
+        Platform.runLater(textArea::requestFocus);
+
+        textArea.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.ESCAPE) {
+                finalizeTextArea(x, y, textArea);
             }
         });
 
-        drawingArea.setOnKeyPressed(event -> {
-            if (isEditingText) {
-                if (event.getCode() == KeyCode.ENTER) {
-                    isEditingText = false;
-                    currentText = null;
-                    drawingArea.requestFocus();
-                    System.out.println("Text editing finished.");
-                } else if (event.getCode() == KeyCode.BACK_SPACE) {
-                    if (currentText != null && !currentText.getText().isEmpty()) {
-                        currentText.setText(currentText.getText().substring(0, currentText.getText().length() - 1));
+        textArea.focusedProperty().addListener((obs, oldVal, newVal) -> {
+            if (!newVal) {
+                finalizeTextArea(x, y, textArea);
+            }
+        });
+    }
+
+    private void finalizeTextArea(double x, double y, TextArea textArea) {
+        if (!contentGroup.getChildren().contains(textArea)) return;
+
+        String text = textArea.getText();
+        Text displayText = new Text(x, y, text);
+        displayText.setFill(colorController.getFillColor());
+        displayText.setFont(Font.font(MainController.fontSizeValue));
+
+        contentGroup.getChildren().add(displayText);
+
+        historyController.addAction(
+                () -> {
+                    contentGroup.getChildren().remove(displayText);
+                    if (!contentGroup.getChildren().contains(textArea)) {
+                        contentGroup.getChildren().add(textArea);
+                        Platform.runLater(() -> textArea.requestFocus());
                     }
+                },
+                () -> {
+                    contentGroup.getChildren().remove(textArea);
+                    contentGroup.getChildren().add(displayText);
                 }
-            }
-        });
-        addShape(currentText);
+        );
 
-        isEditingText = true;
-        drawingArea.requestFocus();
-        System.out.println("Text added and focused.");
+        contentGroup.getChildren().remove(textArea);
     }
 
     public void addShape(Shape shape) {
@@ -188,7 +208,7 @@ public class DrawController {
                     }
                     currentPolygon.getPoints().addAll(localX, localY);
                 } else if (currentTool == ToolMode.TEXT) {
-                    addText(startX, startY);
+                    addTextArea(startX, startY);
                     isEditingText = true;
                 }
                 markAsModified();
