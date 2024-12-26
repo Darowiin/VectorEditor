@@ -4,10 +4,8 @@ import javafx.application.Platform;
 import javafx.collections.ObservableList;
 import javafx.geometry.Bounds;
 import javafx.geometry.Point2D;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextArea;
 import javafx.scene.input.KeyCode;
-import javafx.scene.text.FontWeight;
 import org.example.enums.ToolMode;
 
 import javafx.fxml.FXML;

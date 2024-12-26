@@ -2,7 +2,6 @@ package org.example.models;
 
 import javafx.scene.text.FontWeight;
 
-import java.awt.*;
 import java.util.List;
 
 public class ShapeData {
